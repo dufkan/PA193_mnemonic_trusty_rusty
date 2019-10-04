@@ -1,0 +1,12 @@
+[package]
+name = "mnemonic"
+version = "0.1.0"
+authors = ["Trusty Rusty Team"]
+edition = "2018"
+
+[lib]
+name = "mnemonic"
+path = "src/lib.rs"
+
+[dependencies]
+sha2 = "*"
