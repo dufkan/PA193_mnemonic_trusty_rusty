@@ -160,10 +160,4 @@ mod tests {
         let result = seed(test_mnemonic, Some("TREZOR"));
         assert_eq!(result[..], TEST_RESULT[..]);
     }
-
-    #[test]
-    fn test_example() {
-        hello_hash();
-        assert_eq!(1 + 1, 2);
-    }
 }
