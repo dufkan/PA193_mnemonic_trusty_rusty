@@ -13,18 +13,46 @@ fn print_help() {
 	println!("  --from_file						Load values from files. Arg params will be considered as file paths");
 }
 
+struct Opt {
+    from_file: bool
+}
+
+fn check_multiple_params(entropy:bool, mnemonic:bool, check:bool) -> bool{
+    return (entropy && mnemonic) || (entropy && check) || (mnemonic && check)
+}
+
 fn main() {
 	println!("Hello, world!");
-	
-	for arg in std::env::args().skip(1) {
-		if &arg == "--help" {
-			return print_help();
-		} 
-		else {
-			writeln!(std::io::stderr(), "Invalid arguments, exiting...").unwrap();
-			print_help();
-			std::process::exit(1);
-		}
-	}
-	true;
+    let arguments: Vec<String> = std::env::args().collect();
+    let mut _from_file = false;
+    let mut _entropy = false;
+    let mut _mnemonic = false;
+    let mut _check = false;
+    let mut _to_file = false;
+
+    for mut position in 1..arguments.len() {
+        if arguments[position] == "--entropy" {
+            if _entropy {
+                println!("Double entropy definition, exiting...");
+                std::process::exit(1);
+            }
+            if position + 1 >= arguments.len() {
+                println!("--entropy parameter not provided, exiting...");
+                std::process::exit(1);
+            }
+            _entropy = true;
+        }
+
+
+
+        if arguments[position] == "--help" {
+            return print_help();
+        }
+        if check_multiple_params(_entropy, _mnemonic, _check) {
+            println!("Multiple operations specified, exiting...");
+            std::process::exit(1);
+        }
+    }
+    println!("test");
+    
 }
