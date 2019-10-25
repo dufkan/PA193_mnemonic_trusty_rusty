@@ -57,7 +57,7 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
 }
 
 fn handle_check_result(from_file: bool, to_file: bool, mnemonic: &str, seed: &str, file_path: &str) {
-    
+
 }
 
 fn check_valid_mnemonic(mnemonic: &str, from_file: bool) -> bool {
@@ -156,7 +156,7 @@ fn main() {
         handle_mnemonic_result(_from_file, _to_file, &mnemonic_value, &to_file_value);
     } else if _check {
         check_valid_check_params(&check_mnemonic_value, &check_seed_value , _from_file);
-
+        handle_check_result(_from_file, _to_file, &check_mnemonic_value, &check_seed_value, &to_file_value);
     }
 
 }
