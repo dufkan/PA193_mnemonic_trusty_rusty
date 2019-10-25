@@ -112,6 +112,7 @@ fn main() {
                 println!("Please enter passphrase: ");
                 let mut passphrase = String::new();
                 std::io::stdin().read_line(&mut passphrase).expect("Error reading input");
+                passphrase.pop(); // remove trailing newline
                 println!("Entered mnemonic phrase: {}", mnemonic_value);
                 println!("Output seed: {}", to_hex_string(seed(&mnemonic_value, Some(&passphrase))));
             } else {
