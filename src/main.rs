@@ -73,7 +73,7 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
 
     let mut mnemonic_phrase = String::new();
     if from_file {
-        mnemonic_phrase = std::fs::read_to_string(&mnemonic).expect("Unable to read file");
+        mnemonic_phrase = std::fs::read_to_string(mnemonic).expect("Unable to read file");
         if mnemonic_phrase.chars().last().unwrap() == '\n' {
             mnemonic_phrase.pop(); // remove trailing newline if there is one
         }
@@ -113,16 +113,82 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
 }
 
 fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_path: &str) {
+    let mut entropy_value: Vec<u8> = Vec::new();
+    if from_file {
+        entropy_value = std::fs::read_to_string(&entropy).expect("Unable to read file").bytes().collect();
+    } else {
+        entropy_value = entropy.bytes().collect();
+    }
 
+    // TODO call function, handle result
+
+    if to_file {
+        let path = Path::new(file_path);
+        let display = path.display();
+
+        // create file
+        let mut file = match File::create(&path) {
+            Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+            Ok(file) => file,
+        };
+        // TODO write result to file
+    } else {
+        // TODO write result to stdin
+    }
 }
 
 fn handle_check_result(from_file: bool, to_file: bool, mnemonic: &str, seed: &str, file_path: &str) {
+    let mut mnemonic_value = String::new();
+    let mut seed_value: Vec<u8> = Vec::new();
 
+    if from_file {
+        mnemonic_value = std::fs::read_to_string(mnemonic).expect("Unable to read file");
+        seed_value = std::fs::read_to_string(seed).expect("Unable to read file").bytes().collect();
+    } else {
+        mnemonic_value = mnemonic.to_string();
+        seed_value = seed.bytes().collect();
+    }
+
+    // TODO call function, handle result
+    if to_file {
+        let path = Path::new(file_path);
+        let display = path.display();
+
+        // create file
+        let mut file = match File::create(&path) {
+            Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+            Ok(file) => file,
+        };
+        // TODO write result to file
+    } else {
+        // TODO write result to stdin
+    }
 }
 
 fn is_alphabetic_whitespace(text: &str) -> bool{
     for character in text.chars() {
         if !(character.is_alphabetic() || character.is_whitespace()) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_binary(text: &str) -> bool {
+    for character in text.chars() {
+        if !(character == '0' || character == '1') {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_hexadecimal(text: &str) -> bool {
+    if text.len() % 2 == 1 {
+        return false;
+    }
+    for character in text.chars() {
+        if !character.is_ascii_hexdigit() {
             return false;
         }
     }
@@ -138,11 +204,16 @@ fn check_valid_mnemonic(mnemonic: &str, from_file: bool) -> bool {
 }
 
 fn check_valid_entropy(entropy: &str, from_file: bool) -> bool {
-    true
+    if from_file {
+        let file_content = std::fs::read_to_string(&entropy).expect("Unable to read file");
+        return is_binary(&file_content) || is_hexadecimal(&file_content);
+    }
+    is_hexadecimal(entropy);
+    return is_binary(&entropy) || is_hexadecimal(&entropy);
 }
 
 fn check_valid_check_params(mnemonic: &str, seed: &str, from_file: bool) -> bool {
-    true
+    return check_valid_mnemonic(mnemonic, from_file) && is_hexadecimal(seed);
 }
 
 
@@ -211,7 +282,7 @@ fn main() {
     //check format of params, call results
     if _entropy {
         if !check_valid_entropy(&entropy_value, _from_file) {
-            println!("Entropy parameter invalid format, only hexadecimal or binary format accepted\n");
+            println!("Entropy parameter invalid format, only hexadecimal(even length) or binary format accepted\n");
             std::process::exit(1);
         }
         handle_entropy_result(_from_file, _to_file, &entropy_value, &to_file_value);
@@ -222,8 +293,51 @@ fn main() {
         }
         handle_mnemonic_result(_from_file, _to_file, &mnemonic_value, &to_file_value);
     } else if _check {
-        check_valid_check_params(&check_mnemonic_value, &check_seed_value , _from_file);
+        if !check_valid_check_params(&check_mnemonic_value, &check_seed_value , _from_file) {
+            println!("Check parameters invalid format, exiting...\n");
+            std::process::exit(1);
+        }
         handle_check_result(_from_file, _to_file, &check_mnemonic_value, &check_seed_value, &to_file_value);
     }
+}
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    # [test]
+    fn test_is_binary_1() {
+        assert_eq!(is_binary("0101010101011111110000011010"), true);
+    }
+
+    # [test]
+    fn test_is_binary_2() {
+        assert_eq!(is_binary("01010101010111111100000121010"), false);
+    }
+
+    # [test]
+    fn test_is_binary_3() {
+        assert_eq!(is_binary(""), true);
+    }
+
+    # [test]
+    fn test_is_hexadecimal_1() {
+        assert_eq!(is_hexadecimal("0101010101101011"), true);
+    }
+
+    # [test]
+    fn test_is_hexadecimal_2() {
+        assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b4"), true);
+    }
+
+    # [test]
+    fn test_is_hexadecimal_3() {
+        assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b45"), false);
+    }
+
+    # [test]
+    fn test_is_hexadecimal_4() {
+        assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b4x"), false);
+    }
 }
