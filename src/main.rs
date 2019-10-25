@@ -5,6 +5,8 @@ use std::io::prelude::*;
 use std::path::Path;
 
 
+
+/// Prints help
 fn print_help() {
 	println!("USAGE:");
 	println!("    cargo run [OPTIONS] [--] [args]...");
@@ -17,6 +19,13 @@ fn print_help() {
 	println!("  --from_file						Load values from files. Arg params will be considered as file paths");
 }
 
+/// Checks whether multiple operations have been specified
+///
+/// # Arguments
+///
+///  * `entropy` - representation of entropy state. true if --entropy has been specified, false otherwise
+///  * `mnemonic` - representation of mnemonic state. true if --mnemonic has been specified, false otherwise
+///  * `check` - representation of check state. true if --check has been specified, false otherwise
 fn check_multiple_operations(entropy:bool, mnemonic:bool, check:bool){
     if (entropy && mnemonic) || (entropy && check) || (mnemonic && check) {
         print_help();
@@ -26,7 +35,14 @@ fn check_multiple_operations(entropy:bool, mnemonic:bool, check:bool){
     }
 }
 
-fn check_atleast_one_operation(entropy: bool, mnemonic: bool, check: bool) {
+/// Checks whether at least one operation have been specified
+///
+/// # Arguments
+///
+///  * `entropy` - representation of entropy state. true if --entropy has been specified, false otherwise
+///  * `mnemonic` - representation of mnemonic state. true if --mnemonic has been specified, false otherwise
+///  * `check` - representation of check state. true if --check has been specified, false otherwise
+fn check_at_least_one_operation(entropy: bool, mnemonic: bool, check: bool) {
     if !(entropy || mnemonic || check) {
         print_help();
         println!();
@@ -35,6 +51,12 @@ fn check_atleast_one_operation(entropy: bool, mnemonic: bool, check: bool) {
     }
 }
 
+/// Checks whether operation with name <name> has been specified more than once
+///
+/// # Arguments
+///
+/// * `param` - representation of double definition. true if operation was previously(already) defined, false otherwise
+/// * `name` - name of operation [--entropy, --mnemonic, --check]
 fn check_double_definition(param: bool, name: &str) {
     if param {
         print_help();
@@ -276,7 +298,7 @@ fn main() {
     }
 
     // check other cases
-    check_atleast_one_operation(_entropy, _mnemonic, _check);
+    check_at_least_one_operation(_entropy, _mnemonic, _check);
     check_multiple_operations(_entropy, _mnemonic, _check);
 
     //check format of params, call results
