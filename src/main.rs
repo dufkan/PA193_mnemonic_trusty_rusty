@@ -69,43 +69,46 @@ fn to_hex_string(bytes: Vec<u8>) -> String {
 }
 
 fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_path: &str) {
-//    let path = std::path::Path::new(&mnemonic);
-//    let display = path.display();
-//
-//    let mut file = match std::fs::OpenOptions::new()
-//        .create(true)
-//        .append(true)
-//        .open(&path) {
-//
-//        Err(why) => panic!("couldn't open {}: {}", display,
-//                           why.description()),
-//        Ok(file) => file,
-//    };
-//
-//    let mut file_content = String::new();
-//    match file.read_to_string(&mut file_content) {
-//        Err(why) => panic!("couldn't read {}: {}", display,
-//                           why.description()),
-//        Ok(_) => print!("{} contains:\n{}", display, file_content),
-//    }
-    let passphrase = load_passphrase();
-
+    let pass_phrase = load_passphrase();
 
     let mut mnemonic_phrase = String::new();
     if from_file {
         mnemonic_phrase = std::fs::read_to_string(&mnemonic).expect("Unable to read file");
         if mnemonic_phrase.chars().last().unwrap() == '\n' {
-            mnemonic_phrase.pop();
+            mnemonic_phrase.pop(); // remove trailing newline if there is one
         }
     } else {
         mnemonic_phrase = mnemonic.to_string();
     }
 
-    if to_file {
+    // Build final string
+    let mut write_mnemonic = String::from("Entered mnemonic phrase: ");
+    write_mnemonic.push_str(&mnemonic_phrase);
+    let mut write_seed = String::from("Output seed: ");
+    write_seed.push_str(&to_hex_string(seed(&mnemonic_phrase, Some(&pass_phrase))));
+    let mut write_all = String::new();
+    write_all.push_str(&write_mnemonic);
+    write_all.push('\n');
+    write_all.push_str(&write_seed);
+    write_all.push('\n');
 
+    if to_file {
+        let path = Path::new(file_path);
+        let display = path.display();
+
+        // create file
+        let mut file = match File::create(&path) {
+            Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+            Ok(file) => file,
+        };
+
+        // write to file
+        match file.write_all(write_all.as_bytes()) {
+            Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
+            Ok(_) => println!("successfully wrote to {}", display),
+        }
     } else {
-        println!("Entered mnemonic phrase: {}", mnemonic_phrase);
-        println!("Output seed: {}", to_hex_string(seed(&mnemonic_phrase, Some(&passphrase))));
+        println!("{}", write_all);
     }
 }
 
