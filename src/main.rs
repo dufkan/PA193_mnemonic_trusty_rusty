@@ -31,8 +31,37 @@ fn check_provided_params(position: usize, arguments_len: usize, name: &str) {
     }
 }
 
-fn check_mnemonic_parameter(param: &str) -> bool {
-    for character in param.chars() {
+
+fn to_hex_string(bytes: Vec<u8>) -> String {
+    return bytes.iter().map(|b| format!("{:02x}", b)).collect();
+}
+
+fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_path: &str) {
+    println!("Please enter passphrase: ");
+    let mut passphrase = String::new();
+    std::io::stdin().read_line(&mut passphrase).expect("Error reading input");
+    if passphrase.chars().last().unwrap() == '\n' { // remove trailing newline if there is one
+        passphrase.pop();
+    }
+    if to_file {
+
+    } else {
+        println!("Entered mnemonic phrase: {}", mnemonic);
+        println!("Output seed: {}", to_hex_string(seed(&mnemonic, Some(&passphrase))));
+    }
+
+}
+
+fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_path: &str) {
+
+}
+
+fn handle_check_result(from_file: bool, to_file: bool, mnemonic: &str, seed: &str, file_path: &str) {
+    
+}
+
+fn check_valid_mnemonic(mnemonic: &str, from_file: bool) -> bool {
+    for character in mnemonic.chars() {
         if !(character.is_alphabetic() || character.is_whitespace()) {
             return false;
         }
@@ -40,10 +69,17 @@ fn check_mnemonic_parameter(param: &str) -> bool {
     return true;
 }
 
-fn to_hex_string(bytes: Vec<u8>) -> String {
-    return bytes.iter().map(|b| format!("{:02x}", b)).collect();
+fn check_valid_entropy(entropy: &str, from_file: bool) -> bool {
+    true
 }
 
+fn check_valid_check_params(mnemonic: &str, seed: &str, from_file: bool) -> bool {
+    true
+}
+
+fn check_valid_file_path(file_path: &str) -> bool {
+    true
+}
 
 fn main() {
     let arguments: Vec<String> = std::env::args().collect();
@@ -97,28 +133,30 @@ fn main() {
             check_double_definition(_from_file, "--from_file");
             _from_file = true;
         }
-        if check_multiple_params(_entropy, _mnemonic, _check) {
-            println!("Multiple operations specified, exiting...");
+    }
+
+    // check other cases
+    if check_multiple_params(_entropy, _mnemonic, _check) {
+        println!("Multiple operations specified, exiting...");
+        std::process::exit(1);
+    }
+    if _to_file {
+        if !check_valid_file_path(&to_file_value) {
+            println!("File path provided for --to_file argument is not valid, exiting...");
             std::process::exit(1);
         }
     }
 
-    //TODO now check format of arguments *_value(if in hex,bin...) and call functions
-    if _to_file {
+    //check format of params, call results
+    if _entropy {
+        check_valid_entropy(&entropy_value, _from_file);
+        handle_entropy_result(_from_file, _to_file, &entropy_value, &to_file_value);
+    } else if _mnemonic {
+        check_valid_mnemonic(&mnemonic_value, _from_file);
+        handle_mnemonic_result(_from_file, _to_file, &mnemonic_value, &to_file_value);
+    } else if _check {
+        check_valid_check_params(&check_mnemonic_value, &check_seed_value , _from_file);
 
-    } else {
-        if _mnemonic {
-            if check_mnemonic_parameter(&mnemonic_value) {
-                println!("Please enter passphrase: ");
-                let mut passphrase = String::new();
-                std::io::stdin().read_line(&mut passphrase).expect("Error reading input");
-                passphrase.pop(); // remove trailing newline
-                println!("Entered mnemonic phrase: {}", mnemonic_value);
-                println!("Output seed: {}", to_hex_string(seed(&mnemonic_value, Some(&passphrase))));
-            } else {
-                println!("Invalid format of mnemonic param, only alphanumeric and whitespace is allowed, exiting...");
-                std::process::exit(1);
-            }
-        }
     }
+
 }
