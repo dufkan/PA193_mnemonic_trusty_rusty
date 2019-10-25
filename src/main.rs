@@ -1,3 +1,4 @@
+use mnemonic::seed;
 
 fn print_help() {
 	println!("USAGE:");
@@ -12,7 +13,7 @@ fn print_help() {
 }
 
 fn check_multiple_params(entropy:bool, mnemonic:bool, check:bool) -> bool{
-    return (entropy && mnemonic) || (entropy && check) || (mnemonic && check)
+    return (entropy && mnemonic) || (entropy && check) || (mnemonic && check);
 }
 
 fn check_double_definition(param: bool, name: &str) {
@@ -29,6 +30,20 @@ fn check_provided_params(position: usize, arguments_len: usize, name: &str) {
     }
 }
 
+fn check_mnemonic_parameter(param: &str) -> bool {
+    for character in param.chars() {
+        if !(character.is_alphabetic() || character.is_whitespace()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+fn to_hex_string(bytes: Vec<u8>) -> String {
+    return bytes.iter().map(|b| format!("{:02x}", b)).collect();
+}
+
+
 fn main() {
     let arguments: Vec<String> = std::env::args().collect();
     let mut _from_file = false;
@@ -38,7 +53,7 @@ fn main() {
     let mut _to_file = false;
     let mut skip_n:i8 = 0; // general purpose skip arg
     let mut entropy_value = String::new();
-    let mut mnemonic_value = String::new();
+    let mut mnemonic_value: String = String::new();
     let mut check_mnemonic_value = String::new();
     let mut check_seed_value = String::new();
     let mut to_file_value = String::new();
@@ -87,8 +102,18 @@ fn main() {
         }
     }
 
-    //TODO now check format of arguments *_value(if in hex,bin...)
+    //TODO now check format of arguments *_value(if in hex,bin...) and call functions
+    if _to_file {
 
-
-    //TODO now call function with correct format of params...
+    } else {
+        if _mnemonic {
+            if check_mnemonic_parameter(&mnemonic_value) {
+                println!("Entered mnemonic phrase: {}", mnemonic_value);
+                println!("Output seed: {}", to_hex_string(seed(&mnemonic_value, Some("Trezor"))));
+            } else {
+                println!("Invalid format of mnemonic param, only alphanumeric and whitespace is allowed, exiting...");
+                std::process::exit(1);
+            }
+        }
+    }
 }
