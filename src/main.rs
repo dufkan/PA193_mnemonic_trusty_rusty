@@ -1,5 +1,6 @@
 use mnemonic::seed;
 
+
 fn print_help() {
 	println!("USAGE:");
 	println!("    cargo run [OPTIONS] [--] [args]...");
@@ -108,8 +109,11 @@ fn main() {
     } else {
         if _mnemonic {
             if check_mnemonic_parameter(&mnemonic_value) {
+                println!("Please enter passphrase: ");
+                let mut passphrase = String::new();
+                std::io::stdin().read_line(&mut passphrase).expect("Error reading input");
                 println!("Entered mnemonic phrase: {}", mnemonic_value);
-                println!("Output seed: {}", to_hex_string(seed(&mnemonic_value, Some("Trezor"))));
+                println!("Output seed: {}", to_hex_string(seed(&mnemonic_value, Some(&passphrase))));
             } else {
                 println!("Invalid format of mnemonic param, only alphanumeric and whitespace is allowed, exiting...");
                 std::process::exit(1);
