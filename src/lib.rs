@@ -1,8 +1,8 @@
 use sha2::{Sha256, Sha512, Digest};
 
 // get position of word in wordlist
-fn mnemonic_lookup(mnemonic: &str, _words: Vec<&str>) -> i16 {
-    match _words.iter().position(|x| x == &mnemonic) {
+fn mnemonic_lookup(mnemonic: &str, words: &Vec<&str>) -> i16 {
+    match words.iter().position(|x| x == &mnemonic) {
         None => {
             -1 as i16
         }
@@ -11,6 +11,7 @@ fn mnemonic_lookup(mnemonic: &str, _words: Vec<&str>) -> i16 {
         }
     }
 }
+
 
 // compute sha256 of input
 fn sha256(input: &[u8]) -> Vec<u8> {
@@ -21,43 +22,69 @@ fn sha256(input: &[u8]) -> Vec<u8> {
 
 // get checksum by entropy in bytes
 fn checksum(entropy: &[u8]) -> u8 {
-    let len = entropy.len(); // number of bytes
-    assert_eq!(len%3, 0);
-    let block = len / 3;
-    let header = sha256(entropy)[0];
-        match block {
-            9 => (header >> 5) & 0b0000_0111,
-            12 => (header >> 4) & 0b0000_1111,
-            15 => (header >> 3) & 0b0001_1111,
-            18 => (header >> 2) & 0b0011_1111,
-            21 => (header >> 1) & 0b0111_1111,
-            24 => header,
-            _ => panic!("Size of the block is not compatible!{}", block),
+    let ent = entropy.len(); // number of bytes
+    assert_eq!(ent%4, 0); // entropy must be a multiple of 4 bytes
+    let cs = ent/4;
+    let header = sha256(entropy)[0]; // first byte of hash
+    match cs {
+        4 => header & 0b1111_0000,
+        5 => header & 0b1111_1000,
+        6 => header & 0b1111_1100,
+        7 => header & 0b1111_1110,
+        8 => header,
+        _ => panic!("Size of the block is not compatible!{}", cs),
         }
     }
 
-// get word by position todo _words should be const global variable
-fn get_word(position: usize, words: Vec<&str>) -> &str { words[position] }
+// get n-th word of entropy ... todo words should be const global variable
+fn get_word<'a>(position: usize, entropy: &Vec<u8>, words: &Vec<&'a str>) -> &'a str {
+    let mut index: u16 = 0b0000_0000_0000_0000; // n-th mnemonic word of sentence
+    let mut byte: usize; // n-th byte of entropy
+    let mut bit: usize; // nt-th bit of byte
+    let mut bit_value: bool; // value of bit
+    let first_bit: usize = position * 11; // first bit of mnemonic word
 
-// get words from entropy
-pub fn entropy_to_mnemonic<'a>(entropy: &[u8], words: Vec<&'a str>) -> Vec<&'a str> {
-    println!("{}", entropy[0]);
-    words
+    // compute each bit of mnemonic word
+    for offset in 0..11 {
+        byte = (first_bit + offset) / 8;
+        bit = (first_bit + offset) % 8;
+        // println!("byte: {}, bit: {}", entropy[byte], bit) ;
+        bit_value = (entropy[byte] & (128u8 >> bit) as u8) != 0u8;
+        if bit_value {
+            index |= (1024 >> offset) as u16;
+        }
+    }
+    // println!("index {}", index);
+    words[index as usize]
 }
 
-
-// todo this could be rewrite to const vector
-fn array_to_vec<'a>(raw_words: Vec<&'a str>) -> Vec<&'a str> { raw_words }
+// get words from entropy
+pub fn entropy_to_mnemonic<'a>(init_entropy: &[u8]) -> String {
+    let mut entropy: Vec<_> = init_entropy.to_vec();
+    let words: Vec<_> = RAW_WORDS.to_vec();
+    entropy.push(checksum(init_entropy)); // append checksum to the end of entropy
+    let ms = init_entropy.len() * 3 / 4; // length of mnemonic sentence is 0.75 multiply of initial entropy
+    let mut result = String::new();
+    for index in 0..ms {
+        result.push_str(get_word(index, &entropy, &words));
+        if index != ms-1 {
+            result.push_str(" ");
+        }
+    }
+    result
+}
 
 pub fn init() {
-    let v = b"0123456789abcdef012345679ab";
-    let words: Vec<_> = array_to_vec(RAW_WORDS.to_vec());
-    // println!("{}", mnemonic_lookup("zoo", words));
-    // println!("{}", get_word(55usize, words));
-    // println!("{}", checksum(v));
+    // initial params
+    let v = b"0123456789abcdef".to_vec();
+    let words: Vec<_> = RAW_WORDS.to_vec();
+    // tests
+    println!("Position of \"zoo\" in list: {}", mnemonic_lookup("zoo", &words));
+    println!("5-th word in the sentence: {}", get_word(5usize, &v, &words)); // indexed by 0
+    println!("appendix of the entropy: {}", checksum(&v));
 
-    let mnemonic_words: Vec<_> = entropy_to_mnemonic(v, words);
-    for word in mnemonic_words { println!("{}", word); }
+    let sentence: String = entropy_to_mnemonic(&v);
+    println!("The final sentence: {} ", sentence);
 }
 
 pub fn seed(mnemonic: &str, passphrase: Option<&str>) -> Vec<u8> {
