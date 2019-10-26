@@ -66,6 +66,13 @@ fn check_double_definition(param: bool, name: &str) {
     }
 }
 
+/// Checks whether user gives parameter for operation
+///
+/// # Arguments
+///
+/// * `position` - position where parameters are expected
+/// * `arguments_len` - number of arguments
+/// * `name` - operation name
 fn check_provided_params(position: usize, arguments_len: usize, name: &str) {
     if position >= arguments_len {
         print_help();
@@ -75,6 +82,40 @@ fn check_provided_params(position: usize, arguments_len: usize, name: &str) {
     }
 }
 
+/// Checks whether given string has only albhabetic or whitespace characters
+fn is_alphabetic_whitespace(text: &str) -> bool{
+    for character in text.chars() {
+        if !(character.is_alphabetic() || character.is_whitespace()) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Checks whether given string is binary
+fn is_binary(text: &str) -> bool {
+    for character in text.chars() {
+        if !(character == '0' || character == '1') {
+            return false;
+        }
+    }
+    true
+}
+
+/// Checks whether given string is hexadecimal
+fn is_hexadecimal(text: &str) -> bool {
+    if text.len() % 2 == 1 {
+        return false;
+    }
+    for character in text.chars() {
+        if !character.is_ascii_hexdigit() {
+            return false;
+        }
+    }
+    true
+}
+
+/// Load passphrase from user
 fn load_passphrase() -> String{
     println!("Please enter passphrase: ");
     let mut passphrase = String::new();
@@ -85,11 +126,63 @@ fn load_passphrase() -> String{
     passphrase
 }
 
-
+/// Parse Vec<u8> to hexadecimal string
 fn to_hex_string(bytes: Vec<u8>) -> String {
     return bytes.iter().map(|b| format!("{:02x}", b)).collect();
 }
 
+/// Checks whether given mnemonic has valid format
+///
+/// # Arguments
+///
+/// * `mnemonic` - string which will be checked or path to file which content will be checked in case of from_file = true
+/// * `from_file` - indication whether content of file should be checked.
+fn check_valid_mnemonic(mnemonic: &str, from_file: bool) -> bool {
+    if from_file {
+        let file_content = std::fs::read_to_string(&mnemonic).expect("Unable to read file");
+        return is_alphabetic_whitespace(&file_content);
+    }
+    return is_alphabetic_whitespace(&mnemonic);
+}
+
+/// Checks whether given entropy has valid format
+///
+/// # Arguments
+///
+/// * `entropy` - string which will be checked or path to file which content will be checked in case of from_file = true
+/// * `from_file` - indication whether content of file should be checked.
+fn check_valid_entropy(entropy: &str, from_file: bool) -> bool {
+    if from_file {
+        let file_content = std::fs::read_to_string(&entropy).expect("Unable to read file");
+        return is_binary(&file_content) || is_hexadecimal(&file_content);
+    }
+    is_hexadecimal(entropy);
+    return is_binary(&entropy) || is_hexadecimal(&entropy);
+}
+
+/// Checks whether given mnemonic and seed has valid format
+///
+/// # Arguments
+///
+/// * `mnemonic` - string which will be checked or path to file which content will be checked in case of from_file = true
+/// * `seed` - string which will be checked or path to file which content will be checked in case of from_file = true
+/// * `from_file` - indication whether content of file should be checked.
+fn check_valid_check_params(mnemonic: &str, seed: &str, from_file: bool) -> bool {
+    if from_file {
+        let seed_file_content = std::fs::read_to_string(&seed).expect("Unable to read file");
+        return check_valid_mnemonic(mnemonic, from_file) && is_hexadecimal(&seed_file_content);
+    }
+    return check_valid_mnemonic(mnemonic, from_file) && is_hexadecimal(seed);
+}
+
+/// Handle result of mnemonic operation
+///
+/// # Arguments
+///
+/// * `from_file` - load values from file if true
+/// * `to_file` - write result to file if true
+/// * `mnemonic` - mnemonic which will be processed or path to file which content will be processed
+/// * `file_path` - path to file which will be opened if to_file = true
 fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_path: &str) {
     let pass_phrase = load_passphrase();
 
@@ -134,6 +227,14 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
     }
 }
 
+/// Handle result of entropy operation
+///
+/// # Arguments
+///
+/// * `from_file` - load values from file if true
+/// * `to_file` - write result to file if true
+/// * `entropy` - entropy which will be processed or path to file which content will be processed
+/// * `file_path` - path to file which will be opened if to_file = true
 fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_path: &str) {
     let mut entropy_value: Vec<u8> = Vec::new();
     if from_file {
@@ -159,6 +260,15 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
     }
 }
 
+/// Handle result of check operation
+///
+/// # Arguments
+///
+/// * `from_file` - load values from file if true
+/// * `to_file` - write result to file if true
+/// * `mnemonic` - mnemonic which will be processed ofr path to file which content will be processed
+/// * `seed` - seed which will be processed ofr path to file which content will be processed
+/// * `file_path` - path to file which will be opened if to_file = true
 fn handle_check_result(from_file: bool, to_file: bool, mnemonic: &str, seed: &str, file_path: &str) {
     let mut mnemonic_value = String::new();
     let mut seed_value: Vec<u8> = Vec::new();
@@ -185,57 +295,6 @@ fn handle_check_result(from_file: bool, to_file: bool, mnemonic: &str, seed: &st
     } else {
         // TODO write result to stdin
     }
-}
-
-fn is_alphabetic_whitespace(text: &str) -> bool{
-    for character in text.chars() {
-        if !(character.is_alphabetic() || character.is_whitespace()) {
-            return false;
-        }
-    }
-    true
-}
-
-fn is_binary(text: &str) -> bool {
-    for character in text.chars() {
-        if !(character == '0' || character == '1') {
-            return false;
-        }
-    }
-    true
-}
-
-fn is_hexadecimal(text: &str) -> bool {
-    if text.len() % 2 == 1 {
-        return false;
-    }
-    for character in text.chars() {
-        if !character.is_ascii_hexdigit() {
-            return false;
-        }
-    }
-    true
-}
-
-fn check_valid_mnemonic(mnemonic: &str, from_file: bool) -> bool {
-    if from_file {
-        let file_content = std::fs::read_to_string(&mnemonic).expect("Unable to read file");
-        return is_alphabetic_whitespace(&file_content);
-    }
-    return is_alphabetic_whitespace(&mnemonic);
-}
-
-fn check_valid_entropy(entropy: &str, from_file: bool) -> bool {
-    if from_file {
-        let file_content = std::fs::read_to_string(&entropy).expect("Unable to read file");
-        return is_binary(&file_content) || is_hexadecimal(&file_content);
-    }
-    is_hexadecimal(entropy);
-    return is_binary(&entropy) || is_hexadecimal(&entropy);
-}
-
-fn check_valid_check_params(mnemonic: &str, seed: &str, from_file: bool) -> bool {
-    return check_valid_mnemonic(mnemonic, from_file) && is_hexadecimal(seed);
 }
 
 
@@ -361,5 +420,20 @@ mod tests {
     # [test]
     fn test_is_hexadecimal_4() {
         assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b4x"), false);
+    }
+
+    # [test]
+    fn test_is_alphabetic_whitespace_1() {
+        assert_eq!(is_alphabetic_whitespace("02af02155ff02e6c9897d956b4x"), false);
+    }
+
+    # [test]
+    fn test_is_alphabetic_whitespace_2() {
+        assert_eq!(is_alphabetic_whitespace("sdaoashdiowoidwncadoej da sf s s"), true);
+    }
+
+    # [test]
+    fn test_is_alphabetic_whitespace_3() {
+        assert_eq!(is_alphabetic_whitespace("      "), true);
     }
 }
