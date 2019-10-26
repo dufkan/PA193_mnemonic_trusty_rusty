@@ -1,17 +1,17 @@
 use sha2::{Sha256, Sha512, Digest};
 
+
 // get position of word in wordlist
-fn mnemonic_lookup(mnemonic: &str, words: &Vec<&str>) -> i16 {
+fn mnemonic_lookup(mnemonic: &str, words: &Vec<&str>) -> u16 {
     match words.iter().position(|x| x == &mnemonic) {
         None => {
-            -1 as i16
+            panic!("Invalid word: {}", mnemonic)
         }
         Some(v) => {
-            v as i16
+            v as u16
         }
     }
 }
-
 
 // compute sha256 of input
 fn sha256(input: &[u8]) -> Vec<u8> {
@@ -59,19 +59,45 @@ fn get_word<'a>(position: usize, entropy: &Vec<u8>, words: &Vec<&'a str>) -> &'a
 }
 
 // get words from entropy
-pub fn entropy_to_mnemonic<'a>(init_entropy: &[u8]) -> String {
+pub fn entropy_to_mnemonic(init_entropy: &[u8]) -> String {
     let mut entropy: Vec<_> = init_entropy.to_vec();
-    let words: Vec<_> = RAW_WORDS.to_vec();
+    let word_list: Vec<_> = RAW_WORDS.to_vec();
     entropy.push(checksum(init_entropy)); // append checksum to the end of entropy
     let ms = init_entropy.len() * 3 / 4; // length of mnemonic sentence is 0.75 multiply of initial entropy
     let mut result = String::new();
     for index in 0..ms {
-        result.push_str(get_word(index, &entropy, &words));
+        result.push_str(get_word(index, &entropy, &word_list));
         if index != ms-1 {
             result.push_str(" ");
         }
     }
     result
+}
+
+pub fn mnemonic_to_entropy(sentence: String) -> Vec<u8> {
+    let word_list: Vec<_> = RAW_WORDS.to_vec();
+    let words: Vec<_> = sentence.split(" ").collect();
+    let mut index: u16;
+    let mut result: [u8; 33] = [0; 33];
+    let mut pos = 0usize; // position of actual bit in entropy
+    let mut bit_value: bool;
+    for word in words {
+        index = mnemonic_lookup(word, &word_list);
+        for offset in 0..11 {
+            bit_value = (index & (1024 >> offset as u16)) != 0u16;
+            if bit_value {
+                result[pos/8] |= (128u8 >> pos%8) as u8;
+            }
+            pos += 1;
+        }
+    }
+    let checksum_len = pos/33;
+    let entropy = (&result[0 .. (pos - checksum_len)/8]).to_vec();
+    let checksum = checksum(&entropy);
+    println!("checksum = {}", checksum);
+    // check if checksum is equal to last byte
+    assert_eq!(checksum, result[(pos - checksum_len)/8]);
+    entropy
 }
 
 pub fn init() {
@@ -85,6 +111,9 @@ pub fn init() {
 
     let sentence: String = entropy_to_mnemonic(&v);
     println!("The final sentence: {} ", sentence);
+    let entropy: Vec<u8> = mnemonic_to_entropy(sentence);
+    print!("Entropy of the sentence:");
+    for x in entropy { print!(" {}", x); }
 }
 
 pub fn seed(mnemonic: &str, passphrase: Option<&str>) -> Vec<u8> {
