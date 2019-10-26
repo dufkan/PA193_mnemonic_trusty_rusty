@@ -1,5 +1,4 @@
-use sha2::{Sha512, Digest};
-
+use sha2::{Sha256, Sha512, Digest};
 
 // get position of word in wordlist
 fn mnemonic_lookup(mnemonic: &str, _words: Vec<&str>) -> i16 {
@@ -13,12 +12,19 @@ fn mnemonic_lookup(mnemonic: &str, _words: Vec<&str>) -> i16 {
     }
 }
 
-// get checksum by hash ang entropy length in bytes
-fn checksum(hash: &[u8]) -> u8 {
-    let len = hash.len(); // number of bytes
+// compute sha256 of input
+fn sha256(input: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.input(input);
+    hasher.result().into_iter().collect()
+}
+
+// get checksum by entropy in bytes
+fn checksum(entropy: &[u8]) -> u8 {
+    let len = entropy.len(); // number of bytes
     assert_eq!(len%3, 0);
     let block = len / 3;
-    let header = hash[0];
+    let header = sha256(entropy)[0];
         match block {
             9 => (header >> 5) & 0b0000_0111,
             12 => (header >> 4) & 0b0000_1111,
@@ -26,7 +32,7 @@ fn checksum(hash: &[u8]) -> u8 {
             18 => (header >> 2) & 0b0011_1111,
             21 => (header >> 1) & 0b0111_1111,
             24 => header,
-            _ => panic!("Size of the hash is not compatible!{}", block),
+            _ => panic!("Size of the block is not compatible!{}", block),
         }
     }
 
@@ -44,7 +50,7 @@ pub fn entropy_to_mnemonic<'a>(entropy: &[u8], words: Vec<&'a str>) -> Vec<&'a s
 fn array_to_vec<'a>(raw_words: Vec<&'a str>) -> Vec<&'a str> { raw_words }
 
 pub fn init() {
-    let v = "0123456789abcdef012345679ab".as_bytes();
+    let v = b"0123456789abcdef012345679ab";
     let words: Vec<_> = array_to_vec(RAW_WORDS.to_vec());
     // println!("{}", mnemonic_lookup("zoo", words));
     // println!("{}", get_word(55usize, words));
