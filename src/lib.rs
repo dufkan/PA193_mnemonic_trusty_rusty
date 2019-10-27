@@ -306,6 +306,14 @@ mod tests {
         let result = seed(test_mnemonic, Some("TREZOR"));
         assert_eq!(result[..], TEST_RESULT[..]);
     }
+
+    #[test]
+    fn entropy_to_mnemonic_tv1() {
+        let test_entropy = "00000000000000000000000000000000".as_bytes();
+        let test_result: String = String::from("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about");
+        let result = entropy_to_mnemonic(&test_entropy);
+        assert_eq!(result, test_result);
+    }
 }
 
 
