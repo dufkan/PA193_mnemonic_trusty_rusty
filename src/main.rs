@@ -7,7 +7,8 @@ use std::path::Path;
 mod util;
 use util::is_hexadecimal;
 use util::decode_hex;
-
+use util::is_binary;
+use util::is_alphabetic_whitespace;
 
 /// Prints help
 fn print_help() {
@@ -83,26 +84,6 @@ fn check_provided_params(position: usize, arguments_len: usize, name: &str) {
         println!("{} parameter not provided, exiting...", name);
         std::process::exit(1);
     }
-}
-
-/// Checks whether given string has only albhabetic or whitespace characters
-fn is_alphabetic_whitespace(text: &str) -> bool{
-    for character in text.chars() {
-        if !(character.is_alphabetic() || character.is_whitespace()) {
-            return false;
-        }
-    }
-    true
-}
-
-/// Checks whether given string is binary
-fn is_binary(text: &str) -> bool {
-    for character in text.chars() {
-        if !(character == '0' || character == '1') {
-            return false;
-        }
-    }
-    true
 }
 
 /// Load passphrase from user
@@ -247,10 +228,8 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
 
     entropy_value = decode_hex(&input_entropy).ok().unwrap();
 
-
-let mnemonic_result = entropy_to_mnemonic(&entropy_value);
+    let mnemonic_result = entropy_to_mnemonic(&entropy_value);
     let seed = to_hex_string(seed(&mnemonic_result, Some(&pass_phrase)));
-
 
     // Build final string
     let mut write_entropy = String::from("Entered entropy: ");
@@ -259,7 +238,6 @@ let mnemonic_result = entropy_to_mnemonic(&entropy_value);
     write_mnemonic.push_str(&mnemonic_result);
     let mut write_seed = String::from("Output seed: ");
     write_seed.push_str(&seed);
-
     let mut write_all = String::new();
     write_all.push_str(&write_entropy);
     write_all.push('\n');
@@ -267,13 +245,7 @@ let mnemonic_result = entropy_to_mnemonic(&entropy_value);
     write_all.push('\n');
     write_all.push_str(&write_seed);
     write_all.push('\n');
-
-    println!("{}", write_all);
-
-
-
-    // TODO call function, handle result
-
+    
     if to_file {
         let path = Path::new(file_path);
         let display = path.display();
@@ -408,61 +380,5 @@ fn main() {
             std::process::exit(1);
         }
         handle_check_result(_from_file, _to_file, &check_mnemonic_value, &check_seed_value, &to_file_value);
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    # [test]
-    fn test_is_binary_1() {
-        assert_eq!(is_binary("0101010101011111110000011010"), true);
-    }
-
-    # [test]
-    fn test_is_binary_2() {
-        assert_eq!(is_binary("01010101010111111100000121010"), false);
-    }
-
-    # [test]
-    fn test_is_binary_3() {
-        assert_eq!(is_binary(""), true);
-    }
-
-    # [test]
-    fn test_is_hexadecimal_1() {
-        assert_eq!(is_hexadecimal("0101010101101011"), true);
-    }
-
-    # [test]
-    fn test_is_hexadecimal_2() {
-        assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b4"), true);
-    }
-
-    # [test]
-    fn test_is_hexadecimal_3() {
-        assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b45"), false);
-    }
-
-    # [test]
-    fn test_is_hexadecimal_4() {
-        assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b4x"), false);
-    }
-
-    # [test]
-    fn test_is_alphabetic_whitespace_1() {
-        assert_eq!(is_alphabetic_whitespace("02af02155ff02e6c9897d956b4x"), false);
-    }
-
-    # [test]
-    fn test_is_alphabetic_whitespace_2() {
-        assert_eq!(is_alphabetic_whitespace("sdaoashdiowoidwncadoej da sf s s"), true);
-    }
-
-    # [test]
-    fn test_is_alphabetic_whitespace_3() {
-        assert_eq!(is_alphabetic_whitespace("      "), true);
     }
 }
