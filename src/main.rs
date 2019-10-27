@@ -1,4 +1,5 @@
 use mnemonic::seed;
+use mnemonic::mnemonic_to_entropy;
 use mnemonic::entropy_to_mnemonic;
 use std::error::Error;
 use std::fs::File;
@@ -160,9 +161,8 @@ fn check_valid_check_params(mnemonic: &str, seed: &str, from_file: bool) -> bool
 /// * `mnemonic` - mnemonic which will be processed or path to file which content will be processed
 /// * `file_path` - path to file which will be opened if to_file = true
 fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_path: &str) {
-    let pass_phrase = load_passphrase();
-
     let mut mnemonic_phrase;
+
     if from_file {
         mnemonic_phrase = std::fs::read_to_string(mnemonic).expect("Unable to read file");
         if mnemonic_phrase.chars().last().unwrap() == '\n' {
@@ -172,13 +172,20 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
         mnemonic_phrase = mnemonic.to_string();
     }
 
+    let initial_entropy: Vec<u8> = mnemonic_to_entropy(&mnemonic_phrase);
+    let pass_phrase = load_passphrase();
+
     // Build final string
     let mut write_mnemonic = String::from("Entered mnemonic phrase: ");
     write_mnemonic.push_str(&mnemonic_phrase);
+    let mut write_entropy = String::from("Initial entropy: ");
+    write_entropy.push_str(&to_hex_string(initial_entropy));
     let mut write_seed = String::from("Output seed: ");
     write_seed.push_str(&to_hex_string(seed(&mnemonic_phrase, Some(&pass_phrase))));
     let mut write_all = String::new();
     write_all.push_str(&write_mnemonic);
+    write_all.push('\n');
+    write_all.push_str(&write_entropy);
     write_all.push('\n');
     write_all.push_str(&write_seed);
     write_all.push('\n');
@@ -213,8 +220,6 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
 /// * `entropy` - entropy which will be processed or path to file which content will be processed
 /// * `file_path` - path to file which will be opened if to_file = true
 fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_path: &str) {
-    let pass_phrase = load_passphrase();
-
     let entropy_value: Vec<u8>;
     let mut input_entropy = String::from(entropy);
 
@@ -231,8 +236,9 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
     }
 
     entropy_value = decode_hex(&input_entropy).ok().unwrap();
-
     let mnemonic_result = entropy_to_mnemonic(&entropy_value);
+
+    let pass_phrase = load_passphrase();
     let seed = to_hex_string(seed(&mnemonic_result, Some(&pass_phrase)));
 
     // Build final string
