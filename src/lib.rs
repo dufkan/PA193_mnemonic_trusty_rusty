@@ -1,7 +1,8 @@
+mod wordlist;
+mod vectors;
+
 use sha2::{Sha256, Sha512, Digest};
-pub mod wordlist;
-pub mod vectors;
-use vectors::VECTORS;
+
 use wordlist::WORD_LIST;
 use std::{num::ParseIntError};
 
@@ -88,7 +89,8 @@ fn get_word<'a>(position: usize, entropy: &Vec<u8>, words: &Vec<&'a str>) -> &'a
 }
 
 // get words from entropy
-pub fn entropy_to_mnemonic(mut entropy: Vec<u8>) -> String {
+pub fn entropy_to_mnemonic(entropy: &[u8]) -> String {
+    let mut entropy: Vec<_> = entropy.to_vec();
     let word_list: Vec<_> = WORD_LIST.to_vec();
     let ms = entropy.len() * 3 / 4; // length of mnemonic sentence is 0.75 multiply of initial entropy
     let checksum = checksum(&entropy);
@@ -103,7 +105,7 @@ pub fn entropy_to_mnemonic(mut entropy: Vec<u8>) -> String {
     result
 }
 
-pub fn mnemonic_to_entropy(sentence: String) -> Vec<u8> {
+pub fn mnemonic_to_entropy(sentence: &str) -> Vec<u8> {
     let word_list: Vec<_> = WORD_LIST.to_vec();
     let words: Vec<_> = sentence.split(" ").collect();
     let mut index: u16;
@@ -221,6 +223,7 @@ fn xor_bytes(lhs: &[u8], rhs: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vectors::VECTORS;
 
     #[test]
     fn hmac_sha512_tv1() {
@@ -340,22 +343,19 @@ mod tests {
     fn entropy_to_mnemonic_tv1() {
         let test_entropy = [0b0000_0000;16].to_vec();
         let test_result: String = String::from("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about");
-        let result = entropy_to_mnemonic(test_entropy);
+        let result = entropy_to_mnemonic(&test_entropy);
         assert_eq!(result, test_result);
     }
 
     #[test]
     fn test_vectors() {
-        let mut entropy: Vec<u8>;
-        let mut mnemonic: String;
-        let mut seed: Vec<u8>;
         for i in 0..VECTORS.len()/3 {
-            entropy = decode_hex(VECTORS[3*i + 0]).unwrap();
-            mnemonic = VECTORS[3*i + 1].to_string();
-            seed = decode_hex(VECTORS[3*i + 2]).unwrap();
-            // assert_eq!(entropy, mnemonic_to_entropy(&mnemonic));
-            // assert_eq!(mnemonic, entropy_to_mnemonic(&entropy));
-            // assert_eq!(seed, seed(mnemonic));
+            let test_entropy = decode_hex(VECTORS[3*i + 0]).unwrap();
+            let test_mnemonic = VECTORS[3*i + 1].to_string();
+            let test_seed = decode_hex(VECTORS[3*i + 2]).unwrap();
+            assert_eq!(test_entropy, mnemonic_to_entropy(&test_mnemonic));
+            assert_eq!(test_mnemonic, entropy_to_mnemonic(&test_entropy));
+            assert_eq!(test_seed, seed(&test_mnemonic, Some("TREZOR")));
         }
 
     }
