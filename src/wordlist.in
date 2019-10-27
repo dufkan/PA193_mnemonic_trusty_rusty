@@ -1,4 +1,4 @@
-pub const WORD_LIST: [&'static str; 2048] = [
+[
     "abandon",  "ability",  "able",     "about",    "above",    "absent",
     "absorb",   "abstract", "absurd",   "abuse",    "access",   "accident",
     "account",  "accuse",   "achieve",  "acid",     "acoustic", "acquire",
@@ -341,4 +341,4 @@ pub const WORD_LIST: [&'static str; 2048] = [
     "wrestle",  "wrist",    "write",    "wrong",    "yard",     "year",
     "yellow",   "you",      "young",    "youth",    "zebra",    "zero",
     "zone",     "zoo"
-    ];
+];
