@@ -9,6 +9,7 @@ use util::is_hexadecimal;
 use util::decode_hex;
 use util::is_binary;
 use util::is_alphabetic_whitespace;
+use util::binary_to_hex;
 
 /// Prints help
 fn print_help() {
@@ -161,7 +162,7 @@ fn check_valid_check_params(mnemonic: &str, seed: &str, from_file: bool) -> bool
 fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_path: &str) {
     let pass_phrase = load_passphrase();
 
-    let mut mnemonic_phrase = String::new();
+    let mut mnemonic_phrase;
     if from_file {
         mnemonic_phrase = std::fs::read_to_string(mnemonic).expect("Unable to read file");
         if mnemonic_phrase.chars().last().unwrap() == '\n' {
@@ -203,7 +204,6 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
 }
 
 
-
 /// Handle result of entropy operation
 ///
 /// # Arguments
@@ -215,7 +215,7 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
 fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_path: &str) {
     let pass_phrase = load_passphrase();
 
-    let mut entropy_value: Vec<u8> = Vec::new();
+    let entropy_value: Vec<u8>;
     let mut input_entropy = String::from(entropy);
 
     if from_file {
@@ -224,6 +224,10 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
 
     if input_entropy.chars().last().unwrap() == '\n' {
         input_entropy.pop(); // remove trailing newline if there is one
+    }
+
+    if is_binary(&input_entropy) { // if input in binary, convert it to hexadecimal
+        input_entropy = binary_to_hex(&input_entropy);
     }
 
     entropy_value = decode_hex(&input_entropy).ok().unwrap();
@@ -245,7 +249,7 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
     write_all.push('\n');
     write_all.push_str(&write_seed);
     write_all.push('\n');
-    
+
     if to_file {
         let path = Path::new(file_path);
         let display = path.display();
@@ -255,9 +259,15 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
             Err(why) => panic!("couldn't create {}: {}", display, why.description()),
             Ok(file) => file,
         };
-        // TODO write result to file
+
+        // write to file
+        match file.write_all(write_all.as_bytes()) {
+            Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
+            Ok(_) => println!("successfully wrote to {}", display),
+        }
+
     } else {
-        // TODO write result to stdin
+        println!("{}", write_all);
     }
 }
 
