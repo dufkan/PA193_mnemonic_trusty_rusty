@@ -1,45 +1,12 @@
-mod wordlist;
-mod vectors;
-
 use sha2::{Sha256, Sha512, Digest};
 
-use wordlist::WORD_LIST;
-use std::{num::ParseIntError};
-
-
-/// Checks whether given string is hexadecimal
-pub fn is_hexadecimal(text: &str) -> bool {
-    if text.len() % 2 == 1 {
-        return false;
-    }
-    for character in text.chars() {
-        if !character.is_ascii_hexdigit() {
-            return false;
-        }
-    }
-    true
-}
-
-// https://stackoverflow.com/questions/52987181/how-can-i-convert-a-hex-string-to-a-u8-slice
-pub fn decode_hex(input: &str) -> Result<Vec<u8>, ParseIntError> {
-    if !is_hexadecimal(input) {
-        panic!("Invalid input");
-    }
-    (0..input.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&input[i..i + 2], 16))
-        .collect()
-}
+pub const WORD_LIST: [&'static str; 2048] = include!("wordlist.in");
 
 // get position of word in wordlist
 fn mnemonic_lookup(mnemonic: &str, words: &Vec<&str>) -> u16 {
     match words.iter().position(|x| x == &mnemonic) {
-        None => {
-            panic!("Invalid word: {}", mnemonic)
-        }
-        Some(v) => {
-            v as u16
-        }
+        None    => panic!("Invalid word: {}", mnemonic),
+        Some(v) => v as u16
     }
 }
 
@@ -223,7 +190,31 @@ fn xor_bytes(lhs: &[u8], rhs: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vectors::VECTORS;
+    use std::num::ParseIntError;
+
+    /// Checks whether given string is hexadecimal
+    fn is_hexadecimal(text: &str) -> bool {
+        if text.len() % 2 == 1 {
+            return false;
+        }
+        for character in text.chars() {
+            if !character.is_ascii_hexdigit() {
+                return false;
+            }
+        }
+        true
+    }
+
+    // https://stackoverflow.com/questions/52987181/how-can-i-convert-a-hex-string-to-a-u8-slice
+    fn decode_hex(input: &str) -> Result<Vec<u8>, ParseIntError> {
+        if !is_hexadecimal(input) {
+            panic!("Invalid input");
+        }
+        (0..input.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&input[i..i + 2], 16))
+            .collect()
+    }
 
     #[test]
     fn hmac_sha512_tv1() {
@@ -316,30 +307,6 @@ mod tests {
     }
 
     #[test]
-    fn seed_tv1() {
-        let test_mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        const TEST_RESULT: [u8; 64] = [0xc5, 0x52, 0x57, 0xc3, 0x60, 0xc0, 0x7c, 0x72, 0x02, 0x9a, 0xeb, 0xc1, 0xb5, 0x3c, 0x05, 0xed, 0x03, 0x62, 0xad, 0xa3, 0x8e, 0xad, 0x3e, 0x3e, 0x9e, 0xfa, 0x37, 0x08, 0xe5, 0x34, 0x95, 0x53, 0x1f, 0x09, 0xa6, 0x98, 0x75, 0x99, 0xd1, 0x82, 0x64, 0xc1, 0xe1, 0xc9, 0x2f, 0x2c, 0xf1, 0x41, 0x63, 0x0c, 0x7a, 0x3c, 0x4a, 0xb7, 0xc8, 0x1b, 0x2f, 0x00, 0x16, 0x98, 0xe7, 0x46, 0x3b, 0x04];
-        let result = seed(test_mnemonic, Some("TREZOR"));
-        assert_eq!(result[..], TEST_RESULT[..]);
-    }
-
-    #[test]
-    fn seed_tv2() {
-        let test_mnemonic = "legal winner thank year wave sausage worth useful legal winner thank yellow";
-        const TEST_RESULT: [u8; 64] = [0x2e, 0x89, 0x05, 0x81, 0x9b, 0x87, 0x23, 0xfe, 0x2c, 0x1d, 0x16, 0x18, 0x60, 0xe5, 0xee, 0x18, 0x30, 0x31, 0x8d, 0xbf, 0x49, 0xa8, 0x3b, 0xd4, 0x51, 0xcf, 0xb8, 0x44, 0x0c, 0x28, 0xbd, 0x6f, 0xa4, 0x57, 0xfe, 0x12, 0x96, 0x10, 0x65, 0x59, 0xa3, 0xc8, 0x09, 0x37, 0xa1, 0xc1, 0x06, 0x9b, 0xe3, 0xa3, 0xa5, 0xbd, 0x38, 0x1e, 0xe6, 0x26, 0x0e, 0x8d, 0x97, 0x39, 0xfc, 0xe1, 0xf6, 0x07];
-        let result = seed(test_mnemonic, Some("TREZOR"));
-        assert_eq!(result[..], TEST_RESULT[..]);
-    }
-
-    #[test]
-    fn seed_tv3() {
-        let test_mnemonic = "void come effort suffer camp survey warrior heavy shoot primary clutch crush open amazing screen patrol group space point ten exist slush involve unfold";
-        const TEST_RESULT: [u8; 64] = [0x01, 0xf5, 0xbc, 0xed, 0x59, 0xde, 0xc4, 0x8e, 0x36, 0x2f, 0x2c, 0x45, 0xb5, 0xde, 0x68, 0xb9, 0xfd, 0x6c, 0x92, 0xc6, 0x63, 0x4f, 0x44, 0xd6, 0xd4, 0x0a, 0xab, 0x69, 0x05, 0x65, 0x06, 0xf0, 0xe3, 0x55, 0x24, 0xa5, 0x18, 0x03, 0x4d, 0xdc, 0x11, 0x92, 0xe1, 0xda, 0xcd, 0x32, 0xc1, 0xed, 0x3e, 0xaa, 0x3c, 0x3b, 0x13, 0x1c, 0x88, 0xed, 0x8e, 0x7e, 0x54, 0xc4, 0x9a, 0x5d, 0x09, 0x98];
-        let result = seed(test_mnemonic, Some("TREZOR"));
-        assert_eq!(result[..], TEST_RESULT[..]);
-    }
-
-    #[test]
     fn entropy_to_mnemonic_tv1() {
         let test_entropy = [0b0000_0000;16].to_vec();
         let test_result: String = String::from("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about");
@@ -349,16 +316,16 @@ mod tests {
 
     #[test]
     fn test_vectors() {
-        for i in 0..VECTORS.len()/3 {
-            let test_entropy = decode_hex(VECTORS[3*i + 0]).unwrap();
-            let test_mnemonic = VECTORS[3*i + 1].to_string();
-            let test_seed = decode_hex(VECTORS[3*i + 2]).unwrap();
+        let test_vectors = include!("test_vectors.in");
+        assert_eq!(test_vectors.len() % 3, 0);
+        for i in 0..test_vectors.len()/3 {
+            let test_entropy = decode_hex(test_vectors[3*i + 0]).unwrap();
+            let test_mnemonic = test_vectors[3*i + 1].to_string();
+            let test_seed = decode_hex(test_vectors[3*i + 2]).unwrap();
             assert_eq!(test_entropy, mnemonic_to_entropy(&test_mnemonic));
             assert_eq!(test_mnemonic, entropy_to_mnemonic(&test_entropy));
             assert_eq!(test_seed, seed(&test_mnemonic, Some("TREZOR")));
         }
-
     }
-
 }
 
