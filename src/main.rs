@@ -146,7 +146,10 @@ fn check_valid_entropy(entropy: &str, from_file: bool) -> bool {
 /// * `from_file` - indication whether content of file should be checked.
 fn check_valid_check_params(mnemonic: &str, seed: &str, from_file: bool) -> bool {
     if from_file {
-        let seed_file_content = std::fs::read_to_string(&seed).expect("Unable to read file");
+        let mut seed_file_content = std::fs::read_to_string(&seed).expect("Unable to read file");
+        if seed_file_content.chars().last().unwrap() == '\n' {
+            seed_file_content.pop(); // remove trailing newline if there is one
+        }
         return check_valid_mnemonic(mnemonic, from_file) && is_hexadecimal(&seed_file_content);
     }
     return check_valid_mnemonic(mnemonic, from_file) && is_hexadecimal(seed);
@@ -286,19 +289,52 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
 /// * `mnemonic` - mnemonic which will be processed ofr path to file which content will be processed
 /// * `seed` - seed which will be processed ofr path to file which content will be processed
 /// * `file_path` - path to file which will be opened if to_file = true
-fn handle_check_result(from_file: bool, to_file: bool, mnemonic: &str, seed: &str, file_path: &str) {
-    let mut mnemonic_value = String::new();
-    let mut seed_value: Vec<u8> = Vec::new();
+fn handle_check_result(from_file: bool, to_file: bool, mnemonic: &str, seed_input: &str, file_path: &str) {
+    let mut mnemonic_value;
+    let mut input_seed;
 
     if from_file {
         mnemonic_value = std::fs::read_to_string(mnemonic).expect("Unable to read file");
-        seed_value = std::fs::read_to_string(seed).expect("Unable to read file").bytes().collect();
+        input_seed = std::fs::read_to_string(&seed_input).expect("Unable to read file");
     } else {
         mnemonic_value = mnemonic.to_string();
-        seed_value = seed.bytes().collect();
+        input_seed = seed_input.to_string();
     }
 
-    // TODO call function, handle result
+    if mnemonic_value.chars().last().unwrap() == '\n' {
+        mnemonic_value.pop(); // remove trailing newline if there is one
+    }
+    if input_seed.chars().last().unwrap() == '\n' {
+        input_seed.pop(); // remove trailing newline if there is one
+    }
+
+    let pass_phrase = load_passphrase();
+    let computed_seed = seed(&mnemonic_value, Some(&pass_phrase));
+    let hex_init_seed = decode_hex(&input_seed).ok().unwrap();
+
+
+    // Build final string
+    let mut result:String = String::new();
+    if computed_seed == hex_init_seed {
+        result.push_str("OK\n");
+    } else {
+        result.push_str("NOK\n");
+    }
+    let mut write_mnemonic = String::from("Input mnemonic: ");
+    write_mnemonic.push_str(&mnemonic_value);
+    let mut write_input_seed = String::from("Input seed: ");
+    write_input_seed.push_str(&to_hex_string(hex_init_seed));
+    let mut write_seed = String::from("Output seed: ");
+    write_seed.push_str(&to_hex_string(computed_seed));
+    let mut write_all = String::new();
+    write_all.push_str(&write_mnemonic);
+    write_all.push('\n');
+    write_all.push_str(&write_input_seed);
+    write_all.push('\n');
+    write_all.push_str(&write_seed);
+    write_all.push('\n');
+    write_all.push_str(&result);
+
     if to_file {
         let path = Path::new(file_path);
         let display = path.display();
@@ -308,9 +344,14 @@ fn handle_check_result(from_file: bool, to_file: bool, mnemonic: &str, seed: &st
             Err(why) => panic!("couldn't create {}: {}", display, why.description()),
             Ok(file) => file,
         };
-        // TODO write result to file
+
+        // write to file
+        match file.write_all(write_all.as_bytes()) {
+            Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
+            Ok(_) => println!("successfully wrote to {}", display),
+        }
     } else {
-        // TODO write result to stdin
+        println!("{}", write_all);
     }
 }
 
