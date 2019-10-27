@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn entropy_to_mnemonic_tv1() {
-        let test_entropy = "00000000000000000000000000000000".as_bytes();
+        let test_entropy = [0b0000_0000;16].to_vec();
         let test_result: String = String::from("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about");
         let result = entropy_to_mnemonic(&test_entropy);
         assert_eq!(result, test_result);
