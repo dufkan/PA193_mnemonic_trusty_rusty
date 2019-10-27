@@ -4,8 +4,9 @@ use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use mnemonic::is_hexadecimal;
-use mnemonic::decode_hex;
+mod util;
+use util::is_hexadecimal;
+use util::decode_hex;
 
 
 /// Prints help
@@ -245,7 +246,7 @@ fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_pat
         entropy_value = decode_hex(entropy).ok().unwrap();
     }
 
-    let mnemonic_result = entropy_to_mnemonic(entropy_value);
+    let mnemonic_result = entropy_to_mnemonic(&entropy_value);
     let seed = to_hex_string(seed(&mnemonic_result, Some(&pass_phrase)));
 
 

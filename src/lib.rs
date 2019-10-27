@@ -1,4 +1,5 @@
 use sha2::{Sha256, Sha512, Digest};
+mod util;
 
 pub const WORD_LIST: [&'static str; 2048] = include!("wordlist.in");
 
@@ -190,31 +191,7 @@ fn xor_bytes(lhs: &[u8], rhs: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::num::ParseIntError;
-
-    /// Checks whether given string is hexadecimal
-    fn is_hexadecimal(text: &str) -> bool {
-        if text.len() % 2 == 1 {
-            return false;
-        }
-        for character in text.chars() {
-            if !character.is_ascii_hexdigit() {
-                return false;
-            }
-        }
-        true
-    }
-
-    // https://stackoverflow.com/questions/52987181/how-can-i-convert-a-hex-string-to-a-u8-slice
-    fn decode_hex(input: &str) -> Result<Vec<u8>, ParseIntError> {
-        if !is_hexadecimal(input) {
-            panic!("Invalid input");
-        }
-        (0..input.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&input[i..i + 2], 16))
-            .collect()
-    }
+    use util::decode_hex;
 
     #[test]
     fn hmac_sha512_tv1() {
