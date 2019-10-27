@@ -1,4 +1,6 @@
 use sha2::{Sha256, Sha512, Digest};
+
+#[cfg(test)]
 mod util;
 
 pub const WORD_LIST: [&'static str; 2048] = include!("wordlist.in");

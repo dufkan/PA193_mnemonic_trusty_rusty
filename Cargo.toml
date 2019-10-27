@@ -8,9 +8,5 @@ edition = "2018"
 name = "mnemonic"
 path = "src/lib.rs"
 
-[util]
-name = "util"
-path = "src/util"
-
 [dependencies]
 sha2 = "*"
