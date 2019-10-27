@@ -101,22 +101,6 @@ pub fn mnemonic_to_entropy(sentence: &str) -> Vec<u8> {
     entropy
 }
 
-pub fn init() {
-    // initial params
-    // let v = b"0123456789abcdef".to_vec();
-    // let words: Vec<_> = WORD_LIST.to_vec();
-    // tests
-    // println!("Position of \"zoo\" in list: {}", mnemonic_lookup("zoo", &words));
-    // println!("5-th word in the sentence: {}", get_word(5usize, &v, &words)); // indexed by 0
-    // println!("appendix of the entropy: {}", checksum(&v));
-
-    // let sentence: String = entropy_to_mnemonic(&v);
-    // println!("The final sentence: {} ", sentence);
-    // let entropy: Vec<u8> = mnemonic_to_entropy(sentence);
-    // print!("Entropy of the sentence:");
-    // for x in entropy { print!(" {}", x); }
-}
-
 pub fn seed(mnemonic: &str, passphrase: Option<&str>) -> Vec<u8> {
     let mnemonic: Vec<_> = mnemonic.bytes().collect();
 
@@ -283,14 +267,6 @@ mod tests {
         const TEST_RESULT: [u8; 64] = [0x8c, 0x05, 0x11, 0xf4, 0xc6, 0xe5, 0x97, 0xc6, 0xac, 0x63, 0x15, 0xd8, 0xf0, 0x36, 0x2e, 0x22, 0x5f, 0x3c, 0x50, 0x14, 0x95, 0xba, 0x23, 0xb8, 0x68, 0xc0, 0x05, 0x17, 0x4d, 0xc4, 0xee, 0x71, 0x11, 0x5b, 0x59, 0xf9, 0xe6, 0x0c, 0xd9, 0x53, 0x2f, 0xa3, 0x3e, 0x0f, 0x75, 0xae, 0xfe, 0x30, 0x22, 0x5c, 0x58, 0x3a, 0x18, 0x6c, 0xd8, 0x2b, 0xd4, 0xda, 0xea, 0x97, 0x24, 0xa3, 0xd3, 0xb8];
         let result = pbkdf2(&test_password, &test_salt, 4096);
         assert_eq!(result[..], TEST_RESULT[..]);
-    }
-
-    #[test]
-    fn entropy_to_mnemonic_tv1() {
-        let test_entropy = [0b0000_0000;16].to_vec();
-        let test_result: String = String::from("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about");
-        let result = entropy_to_mnemonic(&test_entropy);
-        assert_eq!(result, test_result);
     }
 
     #[test]
