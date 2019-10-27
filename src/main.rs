@@ -1,9 +1,11 @@
 use mnemonic::seed;
+use mnemonic::entropy_to_mnemonic;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-
+use mnemonic::is_hexadecimal;
+use mnemonic::decode_hex;
 
 
 /// Prints help
@@ -102,19 +104,6 @@ fn is_binary(text: &str) -> bool {
     true
 }
 
-/// Checks whether given string is hexadecimal
-fn is_hexadecimal(text: &str) -> bool {
-    if text.len() % 2 == 1 {
-        return false;
-    }
-    for character in text.chars() {
-        if !character.is_ascii_hexdigit() {
-            return false;
-        }
-    }
-    true
-}
-
 /// Load passphrase from user
 fn load_passphrase() -> String{
     println!("Please enter passphrase: ");
@@ -130,6 +119,7 @@ fn load_passphrase() -> String{
 fn to_hex_string(bytes: Vec<u8>) -> String {
     return bytes.iter().map(|b| format!("{:02x}", b)).collect();
 }
+
 
 /// Checks whether given mnemonic has valid format
 ///
@@ -153,7 +143,10 @@ fn check_valid_mnemonic(mnemonic: &str, from_file: bool) -> bool {
 /// * `from_file` - indication whether content of file should be checked.
 fn check_valid_entropy(entropy: &str, from_file: bool) -> bool {
     if from_file {
-        let file_content = std::fs::read_to_string(&entropy).expect("Unable to read file");
+        let mut file_content = std::fs::read_to_string(&entropy).expect("Unable to read file");
+        if file_content.chars().last().unwrap() == '\n' {
+            file_content.pop(); // remove trailing newline if there is one
+        }
         return is_binary(&file_content) || is_hexadecimal(&file_content);
     }
     is_hexadecimal(entropy);
@@ -227,6 +220,8 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
     }
 }
 
+
+
 /// Handle result of entropy operation
 ///
 /// # Arguments
@@ -236,12 +231,43 @@ fn handle_mnemonic_result(from_file: bool, to_file: bool, mnemonic: &str, file_p
 /// * `entropy` - entropy which will be processed or path to file which content will be processed
 /// * `file_path` - path to file which will be opened if to_file = true
 fn handle_entropy_result(from_file: bool, to_file: bool, entropy: &str, file_path: &str) {
+    let pass_phrase = load_passphrase();
+
     let mut entropy_value: Vec<u8> = Vec::new();
     if from_file {
-        entropy_value = std::fs::read_to_string(&entropy).expect("Unable to read file").bytes().collect();
+        let mut string_entropy = std::fs::read_to_string(&entropy).expect("Unable to read file");
+        if string_entropy.chars().last().unwrap() == '\n' {
+            string_entropy.pop(); // remove trailing newline if there is one
+        }
+        entropy_value = decode_hex(&string_entropy).ok().unwrap();
+
     } else {
-        entropy_value = entropy.bytes().collect();
+        entropy_value = decode_hex(entropy).ok().unwrap();
     }
+
+    let mnemonic_result = entropy_to_mnemonic(entropy_value);
+    let seed = to_hex_string(seed(&mnemonic_result, Some(&pass_phrase)));
+
+
+    // Build final string
+    let mut write_entropy = String::from("Entered entropy: ");
+    write_entropy.push_str(entropy);
+    let mut write_mnemonic = String::from("Output mnemonic: ");
+    write_mnemonic.push_str(&mnemonic_result);
+    let mut write_seed = String::from("Output seed: ");
+    write_seed.push_str(&seed);
+
+    let mut write_all = String::new();
+    write_all.push_str(&write_entropy);
+    write_all.push('\n');
+    write_all.push_str(&write_mnemonic);
+    write_all.push('\n');
+    write_all.push_str(&write_seed);
+    write_all.push('\n');
+
+    println!("{}", write_all);
+
+
 
     // TODO call function, handle result
 
