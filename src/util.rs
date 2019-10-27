@@ -53,7 +53,7 @@ pub fn binary_to_hex(val: &str) -> String {
 
     let mut result = String::new();
     let mut binary_text = val;
-    for iter in 0..(binary_text.len() / 4) {
+    for _ in 0..(binary_text.len() / 4) {
         let partial_result = &binary_text[..4];
         let partial_hex: u8 = u8::from_str_radix(partial_result, 2).unwrap();
         result.push_str(&format!("{:0x}", partial_hex));
