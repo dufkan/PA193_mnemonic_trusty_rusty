@@ -5,26 +5,26 @@ mod util;
 
 pub const WORD_LIST: [&'static str; 2048] = include!("wordlist.in");
 
-// get position of word in wordlist
-fn mnemonic_lookup(mnemonic: &str, words: &Vec<&str>) -> u16 {
-    match words.iter().position(|x| x == &mnemonic) {
+/// Get position of word in wordlist
+fn mnemonic_lookup(mnemonic: &str) -> u16 {
+    match WORD_LIST.iter().position(|x| x == &mnemonic) {
         None    => panic!("Invalid word: {}", mnemonic),
         Some(v) => v as u16
     }
 }
 
-// compute sha256 of input
+/// Compute sha256 of input
 fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.input(input);
     hasher.result().into_iter().collect()
 }
 
-// get checksum by entropy in bytes
+/// Get checksum by entropy in bytes
 fn checksum(entropy: &[u8]) -> u8 {
     let ent = entropy.len(); // number of bytes
-    assert_eq!(ent%4, 0); // entropy must be a multiple of 4 bytes
-    let cs = ent/4;
+    assert_eq!(ent % 4, 0); // entropy must be a multiple of 4 bytes
+    let cs = ent / 4;
     let header = sha256(entropy)[0]; // first byte of hash
     match cs {
         4 => header & 0b1111_0000,
@@ -33,74 +33,73 @@ fn checksum(entropy: &[u8]) -> u8 {
         7 => header & 0b1111_1110,
         8 => header,
         _ => panic!("Size of the block is not compatible!{}", cs),
-        }
     }
+}
 
-// get n-th word of entropy ... todo words should be const global variable
-fn get_word<'a>(position: usize, entropy: &Vec<u8>, words: &Vec<&'a str>) -> &'a str {
+// Get n-th word of entropy ...
+fn get_word(position: usize, entropy: &Vec<u8>) -> &str {
     let mut index: u16 = 0b0000_0000_0000_0000; // n-th mnemonic word of sentence
-    let mut byte: usize; // n-th byte of entropy
-    let mut bit: usize; // nt-th bit of byte
-    let mut bit_value: bool; // value of bit
     let first_bit: usize = position * 11; // first bit of mnemonic word
 
     // compute each bit of mnemonic word
     for offset in 0..11 {
-        byte = (first_bit + offset) / 8;
-        bit = (first_bit + offset) % 8;
-        // println!("byte: {}, bit: {}", entropy[byte], bit) ;
-        bit_value = (entropy[byte] & (128u8 >> bit) as u8) != 0u8;
+        let byte = (first_bit + offset) / 8;
+        let bit = (first_bit + offset) % 8;
+        let bit_value = (entropy[byte] & (128u8 >> bit) as u8) != 0u8;
         if bit_value {
             index |= (1024 >> offset) as u16;
         }
     }
-    // println!("index {}", index);
-    words[index as usize]
+
+    WORD_LIST[index as usize]
 }
 
-// get words from entropy
+/// Get words from entropy
 pub fn entropy_to_mnemonic(entropy: &[u8]) -> String {
     let mut entropy: Vec<_> = entropy.to_vec();
-    let word_list: Vec<_> = WORD_LIST.to_vec();
     let ms = entropy.len() * 3 / 4; // length of mnemonic sentence is 0.75 multiply of initial entropy
     let checksum = checksum(&entropy);
     entropy.push(checksum); // append checksum to the end of entropy
     let mut result = String::new();
     for index in 0..ms {
-        result.push_str(get_word(index, &entropy, &word_list));
-        if index != ms-1 {
-            result.push_str(" ");
+        result.push_str(get_word(index, &entropy));
+        if index != ms - 1 {
+            result.push(' ');
         }
     }
     result
 }
 
+/// Get entropy from mnemonic
 pub fn mnemonic_to_entropy(sentence: &str) -> Vec<u8> {
-    let word_list: Vec<_> = WORD_LIST.to_vec();
     let words: Vec<_> = sentence.split(" ").collect();
-    let mut index: u16;
-    let mut result: [u8; 33] = [0; 33];
+    let mut result = [0u8; 33];
     let mut pos = 0usize; // position of actual bit in entropy
-    let mut bit_value: bool;
     for word in words {
-        index = mnemonic_lookup(word, &word_list);
+        let index = mnemonic_lookup(word);
         for offset in 0..11 {
-            bit_value = (index & (1024 >> offset as u16)) != 0u16;
+            let bit_value = (index & (1024 >> offset as u16)) != 0u16;
             if bit_value {
-                result[pos/8] |= (128u8 >> pos%8) as u8;
+                result[pos / 8] |= (128u8 >> pos % 8) as u8;
             }
             pos += 1;
         }
     }
-    let checksum_len = pos/33;
-    let entropy = (&result[0 .. (pos - checksum_len)/8]).to_vec();
+    let checksum_len = pos / 33;
+    let entropy = (&result[0..(pos - checksum_len)/8]).to_vec();
     let checksum = checksum(&entropy);
-    println!("checksum = {}", checksum);
+
     // check if checksum is equal to last byte
     assert_eq!(checksum, result[(pos - checksum_len)/8]);
     entropy
 }
 
+/// Transform a mnemonic to a seed
+/// 
+/// # Arguments
+/// 
+///  * `mnemonic` - the mnemonic
+///  * `passphrase` - an optional passphrase
 pub fn seed(mnemonic: &str, passphrase: Option<&str>) -> Vec<u8> {
     let mnemonic: Vec<_> = mnemonic.bytes().collect();
 
@@ -131,6 +130,7 @@ fn pbkdf2(password: &[u8], salt: &[u8], iter_count: usize) -> Vec<u8> {
     result
 }
 
+/// HMAC-SHA512
 fn hmac_sha512(data: &[u8], key: &[u8]) -> Vec<u8> {
     const OPAD: [u8; 128] = [0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c];
     const IPAD: [u8; 128] = [0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36];
@@ -165,6 +165,7 @@ fn hmac_sha512(data: &[u8], key: &[u8]) -> Vec<u8> {
     hasher.result().into_iter().collect()
 }
 
+/// XOR byte slices of the same length and return the result as Vec<u8>
 fn xor_bytes(lhs: &[u8], rhs: &[u8]) -> Vec<u8> {
     assert_eq!(lhs.len(), rhs.len());
     let mut result = Vec::new();
