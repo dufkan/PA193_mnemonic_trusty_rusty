@@ -91,7 +91,7 @@ fn check_valid_mnemonic(mnemonic: &str, from_file: bool) -> bool {
 fn check_valid_entropy(entropy: &str, from_file: bool) -> bool {
     if from_file {
         let mut file_content = std::fs::read_to_string(&entropy).expect("Unable to read file");
-        if file_content.chars().last().unwrap() == '\n' {
+        if let Some('\n') = file_content.chars().last() {
             file_content.pop(); // remove trailing newline if there is one
         }
         return is_binary(&file_content) || is_hexadecimal(&file_content);
