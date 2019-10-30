@@ -35,7 +35,7 @@ fn checksum(entropy: &[u8]) -> Result<u8, String> {
         6 => Ok(header & 0b1111_1100),
         7 => Ok(header & 0b1111_1110),
         8 => Ok(header),
-        _ => Err(format!("Size of the block is not compatible!{}", cs)),
+        _ => Err(String::from("Size of the block is not compatible!")),
     }
 }
 

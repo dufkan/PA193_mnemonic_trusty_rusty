@@ -18,6 +18,7 @@ fn print_help() {
 	println!("  --check <mnemonic/filepath> <seed/filepath>    Check if given mnemonic generates given seed");
 	println!("  --to_file <file>                               Write output to file instead of stdout");
 	println!("  --from_file                                    Load values from files. Arg params will be considered as file paths");
+	println!("  --binary                                       Interpret entropy as binary string");
 }
 
 /// Checks whether operation with name <name> has been specified more than once
@@ -87,13 +88,13 @@ fn check_valid_mnemonic(mnemonic: &str) -> bool {
 }
 
 /// Checks whether given entropy has valid format
-fn check_valid_entropy(entropy: &str) -> bool {
-    is_binary(&entropy) || is_hexadecimal(&entropy)
+fn check_valid_entropy(entropy: &str, binary: bool) -> bool {
+    (binary && is_binary(&entropy)) || (!binary && is_hexadecimal(&entropy))
 }
 
 /// Checks whether given mnemonic and seed has valid format
 fn check_valid_check_params(mnemonic: &str, seed: &str) -> bool {
-    check_valid_mnemonic(mnemonic) && is_hexadecimal(seed)
+    check_valid_mnemonic(mnemonic) && is_hexadecimal(&seed)
 }
 
 /// Handle result of mnemonic operation
@@ -151,17 +152,23 @@ fn handle_mnemonic_result(to_file: &Option<String>, mnemonic: &str) -> Result<i3
 ///
 /// * `to_file` - write result to file if Some
 /// * `entropy` - entropy which will be processed or path to file which content will be processed
-fn handle_entropy_result(to_file: &Option<String>, entropy: &str) -> Result<i32, std::io::Error> {
+/// * `binary` - binary input
+fn handle_entropy_result(to_file: &Option<String>, entropy: &str, binary: bool) -> Result<i32, std::io::Error> {
     let entropy_value: Vec<u8>;
     let mut input_entropy = String::from(entropy);
 
-    if is_binary(&input_entropy) { // if input in binary, convert it to hexadecimal
-        input_entropy = match binary_to_hex(&input_entropy) {
-            Err(error) => {
-                eprintln!("Input error: {}", error);
-                return Ok(1);
-            },
-            Ok(entropy) => entropy,
+    if binary {
+        if is_binary(&input_entropy) { // if input in binary, convert it to hexadecimal
+            input_entropy = match binary_to_hex(&input_entropy) {
+                Err(error) => {
+                    eprintln!("Input error: {}", error);
+                    return Ok(1);
+                },
+                Ok(entropy) => entropy,
+            }
+        } else {
+            eprintln!("Input error: Non-binary input!");
+            return Ok(1);
         }
     }
 
@@ -208,7 +215,7 @@ fn handle_entropy_result(to_file: &Option<String>, entropy: &str) -> Result<i32,
 
         // write to file
         file.write_all(write_all.as_bytes())?;
-        println!("successfully wrote to {}", display);
+        println!("Successfully wrote to {}.", display);
     } else {
         print!("{}", write_all);
     }
@@ -276,6 +283,7 @@ fn handle_check_result(to_file: &Option<String>, mnemonic: &str, seed: &str) -> 
 
 struct Options {
     from_file: bool,
+    binary: bool,
     to_file: Option<String>,
     entropy: Option<String>,
     mnemonic: Option<String>,
@@ -286,6 +294,7 @@ impl Default for Options {
     fn default() -> Options {
         Options {
             from_file: false,
+            binary: false,
             to_file: Option::default(),
             entropy: Option::default(),
             mnemonic: Option::default(),
@@ -350,7 +359,7 @@ impl Options {
 
     fn check_data(&self) -> Result<(), i32> {
         if let Some(entropy) = self.entropy.as_ref() {
-            if !check_valid_entropy(entropy) {
+            if !check_valid_entropy(entropy, self.binary) {
                 eprintln!("Entropy parameter invalid format, only hexadecimal or binary format accepted");
                 return Err(1);
             }
@@ -414,6 +423,10 @@ fn run() -> Result<(), i32> {
                 check_double_definition(options.from_file, &arguments[position])?;
                 options.from_file = true;
             },
+            "--binary" => {
+                check_double_definition(options.binary, &arguments[position])?;
+                options.binary = true;
+            },
             _ => {
                 print_help();
                 println!();
@@ -437,7 +450,7 @@ fn run() -> Result<(), i32> {
 
     // check format of params, call results
     let result = if options.entropy.is_some() {
-        handle_entropy_result(&options.to_file, &options.entropy.unwrap())
+        handle_entropy_result(&options.to_file, &options.entropy.unwrap(), options.binary)
     } else if options.mnemonic.is_some() {
         handle_mnemonic_result(&options.to_file, &options.mnemonic.unwrap())
     } else if options.check.is_some() {
