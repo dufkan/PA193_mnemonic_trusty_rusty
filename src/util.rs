@@ -64,68 +64,73 @@ pub fn binary_to_hex(val: &str) -> Result<String, String> {
 mod tests {
     use super::*;
 
-    # [test]
+    #[test]
     fn test_is_binary_1() {
         assert_eq!(is_binary("0101010101011111110000011010"), true);
     }
 
-    # [test]
+    #[test]
     fn test_is_binary_2() {
         assert_eq!(is_binary("01010101010111111100000121010"), false);
     }
 
-    # [test]
+    #[test]
     fn test_is_binary_3() {
         assert_eq!(is_binary(""), true);
     }
 
-    # [test]
+    #[test]
     fn test_is_hexadecimal_1() {
         assert_eq!(is_hexadecimal("0101010101101011"), true);
     }
 
-    # [test]
+    #[test]
     fn test_is_hexadecimal_2() {
         assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b4"), true);
     }
 
-    # [test]
+    #[test]
     fn test_is_hexadecimal_3() {
         assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b45"), false);
     }
 
-    # [test]
+    #[test]
     fn test_is_hexadecimal_4() {
         assert_eq!(is_hexadecimal("02af02155ff02e6c9897d956b4x"), false);
     }
 
-    # [test]
+    #[test]
     fn test_is_alphabetic_whitespace_1() {
         assert_eq!(is_alphabetic_whitespace("02af02155ff02e6c9897d956b4x"), false);
     }
 
-    # [test]
+    #[test]
     fn test_is_alphabetic_whitespace_2() {
         assert_eq!(is_alphabetic_whitespace("sdaoashdiowoidwncadoej da sf s s"), true);
     }
 
-    # [test]
+    #[test]
     fn test_is_alphabetic_whitespace_3() {
         assert_eq!(is_alphabetic_whitespace("      "), true);
     }
 
-    # [test]
+    #[test]
     fn test_binary_to_hex_1() {
         assert_eq!(binary_to_hex("11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111").unwrap(), "ffffffffffffffffffffffffffffffff")
     }
 
-    # [test]
+    #[test]
     fn test_binary_to_hex_2() {
         assert_eq!(binary_to_hex("0000011001101101110010100001101000101011101101111110100010100001110110110010100000110010000101001000110011101001100100110011111011101010000011110011101011001001010101001000110101111001001100010001001011011001101010010101110010010100000001111110111110101101").unwrap(), "066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad")
     }
 
-    # [test]
+    #[test]
     fn test_binary_to_hex_3() {
         assert_eq!(binary_to_hex("11000000101110100101101010001110100100010100000100010001001000010000111100101011110100010011000111110011110101011110000010001101").unwrap(), "c0ba5a8e914111210f2bd131f3d5e08d");
+    }
+
+    #[test]
+    fn test_binary_to_hex_4() {
+        assert!(binary_to_hex("110000001011101001011010100011101001000101000001000100010010010000111100101011110100010011000111110011110101011110000010001101").is_err());
     }
 }
