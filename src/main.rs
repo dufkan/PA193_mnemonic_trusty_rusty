@@ -1,6 +1,6 @@
 mod util;
 
-use mnemonic::{entropy_to_mnemonic, mnemonic_to_entropy, mnemonic_to_seed, mnemonic_lookup};
+use mnemonic::{entropy_to_mnemonic, mnemonic_to_entropy, mnemonic_to_seed};
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -103,13 +103,6 @@ fn check_valid_check_params(mnemonic: &str, seed: &str) -> bool {
 /// * `to_file` - write result to file if Some
 /// * `mnemonic` - mnemonic which will be processed or path to file which content will be processed
 fn handle_mnemonic_result(to_file: &Option<String>, mnemonic: &str) -> Result<i32, std::io::Error> {
-    let words: Vec<_> = mnemonic.split(' ').collect();
-    let possible_len: [usize; 5] = [12, 15, 18, 21, 24];
-    if ! possible_len.contains(&words.len()) {
-        eprintln!("Mnemonic sentence could contains just 12, 15, 18, 21 or 24 words");
-        return Ok(1);
-    }
-
     let initial_entropy = match mnemonic_to_entropy(&mnemonic) {
         Err(error) => {
             eprintln!("Input error: {}", error);

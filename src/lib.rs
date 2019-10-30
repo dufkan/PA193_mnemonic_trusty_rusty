@@ -76,6 +76,11 @@ pub fn entropy_to_mnemonic(entropy: &[u8]) -> Result<String, String> {
 /// Get entropy from mnemonic
 pub fn mnemonic_to_entropy(sentence: &str) -> Result<Vec<u8>, String> {
     let words: Vec<_> = sentence.split(' ').collect();
+    const POSSIBLE_LEN: [usize; 5] = [12, 15, 18, 21, 24];
+    if !POSSIBLE_LEN.contains(&words.len()) {
+        return Err(String::from("Mnemonic sentence could contain just 12, 15, 18, 21 or 24 words!"));
+    }
+
     let mut result = [0u8; 33];
     let mut pos = 0usize; // position of actual bit in entropy
     for word in words {
