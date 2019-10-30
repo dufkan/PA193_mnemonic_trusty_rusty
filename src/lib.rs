@@ -100,7 +100,7 @@ pub fn mnemonic_to_entropy(sentence: &str) -> Vec<u8> {
 /// 
 ///  * `mnemonic` - the mnemonic
 ///  * `passphrase` - an optional passphrase
-pub fn seed(mnemonic: &str, passphrase: Option<&str>) -> Vec<u8> {
+pub fn mnemonic_to_seed(mnemonic: &str, passphrase: Option<&str>) -> Vec<u8> {
     let mnemonic: Vec<_> = mnemonic.bytes().collect();
 
     let passphrase = passphrase.unwrap_or("");
@@ -280,7 +280,7 @@ mod tests {
             let test_seed = decode_hex(test_vectors[3*i + 2]).unwrap();
             assert_eq!(test_entropy, mnemonic_to_entropy(&test_mnemonic));
             assert_eq!(test_mnemonic, entropy_to_mnemonic(&test_entropy));
-            assert_eq!(test_seed, seed(&test_mnemonic, Some("TREZOR")));
+            assert_eq!(test_seed, mnemonic_to_seed(&test_mnemonic, Some("TREZOR")));
         }
     }
 }
