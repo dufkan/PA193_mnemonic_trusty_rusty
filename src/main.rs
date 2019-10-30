@@ -26,13 +26,14 @@ fn print_help() {
 ///
 /// * `param` - representation of double definition. true if operation was previously(already) defined, false otherwise
 /// * `name` - name of operation [--entropy, --mnemonic, --check]
-fn check_double_definition(param: bool, name: &str) {
+fn check_double_definition(param: bool, name: &str) -> Result<(), i32> {
     if param {
         print_help();
         println!();
         eprintln!("Double {} definition, exiting...", name);
-        std::process::exit(1);
+        return Err(1);
     }
+    Ok(())
 }
 
 /// Checks whether user gives parameter for operation
@@ -42,13 +43,14 @@ fn check_double_definition(param: bool, name: &str) {
 /// * `position` - position where parameters are expected
 /// * `arguments_len` - number of arguments
 /// * `name` - operation name
-fn check_provided_params(position: usize, arguments_len: usize, name: &str) {
+fn check_provided_params(position: usize, arguments_len: usize, name: &str) -> Result<(), i32> {
     if position >= arguments_len {
         print_help();
         println!();
         eprintln!("{} parameter not provided, exiting...", name);
-        std::process::exit(1);
+        return Err(1);
     }
+    Ok(())
 }
 
 /// Load passphrase from user
@@ -295,23 +297,25 @@ impl Default for Options {
 impl Options {
 
     /// Checks whether multiple operations have been specified
-    fn check_multiple_operations(&self){
+    fn check_multiple_operations(&self) -> Result<(), i32> {
         if self.entropy.is_some() as u8 + self.mnemonic.is_some() as u8 + self.check.is_some() as u8 > 1 {
             print_help();
             println!();
             eprintln!("Multiple operations specified, exiting...");
-            std::process::exit(1);
+            return Err(1);
         }
+        Ok(())
     }
 
     /// Checks whether at least one operation have been specified
-    fn check_at_least_one_operation(&self) {
+    fn check_at_least_one_operation(&self) -> Result<(), i32> {
         if !(self.entropy.is_some() || self.mnemonic.is_some() || self.check.is_some()) {
             print_help();
             println!();
             eprintln!("Nothing to do, provide operation (--entropy, --mnemonic, --check), exiting...");
-            std::process::exit(1);
+            return Err(1);
         }
+        Ok(())
     }
 
     fn load(&mut self) -> Result<(), std::io::Error> {
@@ -344,29 +348,30 @@ impl Options {
         }
     }
 
-    fn check_data(&self) {
+    fn check_data(&self) -> Result<(), i32> {
         if let Some(entropy) = self.entropy.as_ref() {
             if !check_valid_entropy(entropy) {
                 eprintln!("Entropy parameter invalid format, only hexadecimal or binary format accepted");
-                std::process::exit(1);
+                return Err(1);
             }
         }
         if let Some(mnemonic) = self.mnemonic.as_ref() {
             if !check_valid_mnemonic(mnemonic) {
                 eprintln!("Mnemonic parameter invalid format, only alphabetic and whitespace characters accepted");
-                std::process::exit(1);
+                return Err(1);
             }
         }
         if let Some((check_mnemonic, check_seed)) = self.check.as_ref() {
             if !check_valid_check_params(check_mnemonic, check_seed) {
                 eprintln!("Check parameters invalid format, exiting...");
-                std::process::exit(1);
+                return Err(1);
             }
         }
+        Ok(())
     }
 }
 
-fn main() {
+fn run() -> Result<(), i32> {
     let arguments: Vec<String> = std::env::args().collect();
     let mut options = Options::default();
     let mut skip_n: i8 = 0; // general purpose skip arg
@@ -379,53 +384,56 @@ fn main() {
         match arguments[position].as_str() {
             "--entropy" => {
                 skip_n = 1;
-                check_double_definition(options.entropy.is_some(), &arguments[position]);
-                check_provided_params(position + 1, arguments.len(), &arguments[position]);
+                check_double_definition(options.entropy.is_some(), &arguments[position])?;
+                check_provided_params(position + 1, arguments.len(), &arguments[position])?;
                 options.entropy = Some(arguments[position + 1].clone());
             },
             "--mnemonic" => {
                 skip_n = 1;
-                check_double_definition(options.mnemonic.is_some(), &arguments[position]);
-                check_provided_params(position + 1, arguments.len(), &arguments[position]);
+                check_double_definition(options.mnemonic.is_some(), &arguments[position])?;
+                check_provided_params(position + 1, arguments.len(), &arguments[position])?;
                 options.mnemonic = Some(arguments[position + 1].clone());
             },
             "--check" => {
                 skip_n = 2;
-                check_double_definition(options.check.is_some(), &arguments[position]);
-                check_provided_params(position + 2, arguments.len(), &arguments[position]);
+                check_double_definition(options.check.is_some(), &arguments[position])?;
+                check_provided_params(position + 2, arguments.len(), &arguments[position])?;
                 options.check = Some((arguments[position + 1].clone(), arguments[position + 2].clone()));
             },
             "--to_file" => {
                 skip_n = 1;
-                check_double_definition(options.to_file.is_some(), &arguments[position]);
-                check_provided_params(position + 1, arguments.len(), &arguments[position]);
+                check_double_definition(options.to_file.is_some(), &arguments[position])?;
+                check_provided_params(position + 1, arguments.len(), &arguments[position])?;
                 options.to_file = Some(arguments[position + 1].clone())
             },
-            "--help" => return print_help(),
+            "--help" => {
+                print_help();
+                return Ok(());
+            },
             "--from_file" => {
-                check_double_definition(options.from_file, &arguments[position]);
+                check_double_definition(options.from_file, &arguments[position])?;
                 options.from_file = true;
             },
             _ => {
                 print_help();
                 println!();
-                println!("Unexpected argument: {}", arguments[position]);
-                std::process::exit(1);
+                eprintln!("Unexpected argument: {}", arguments[position]);
+                return Err(1);
             }
         }
     }
 
     // check other cases
-    options.check_at_least_one_operation();
-    options.check_multiple_operations();
+    options.check_at_least_one_operation()?;
+    options.check_multiple_operations()?;
 
     if let Err(_) = options.load() {
         eprintln!("Input file could not be read!");
-        std::process::exit(1);
+        return Err(1);
     }
 
     options.clean_input();
-    options.check_data();
+    options.check_data()?;
 
     // check format of params, call results
     let result = if options.entropy.is_some() {
@@ -441,7 +449,19 @@ fn main() {
 
     if result.is_err() {
         eprintln!("IO error: {}", result.unwrap_err().description());
-        std::process::exit(1);
+        return Err(1);
     }
-    std::process::exit(result.unwrap());
+
+    match result.unwrap() {
+        0 => Ok(()),
+        e => Err(e),
+    }
+}
+
+fn main() {
+    if let Err(e) = run() {
+        std::process::exit(e);
+    } else {
+        std::process::exit(0);
+    }
 }
