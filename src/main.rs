@@ -30,7 +30,7 @@ fn check_double_definition(param: bool, name: &str) {
     if param {
         print_help();
         println!();
-        println!("Double {} definition, exiting...", name);
+        eprintln!("Double {} definition, exiting...", name);
         std::process::exit(1);
     }
 }
@@ -46,7 +46,7 @@ fn check_provided_params(position: usize, arguments_len: usize, name: &str) {
     if position >= arguments_len {
         print_help();
         println!();
-        println!("{} parameter not provided, exiting...", name);
+        eprintln!("{} parameter not provided, exiting...", name);
         std::process::exit(1);
     }
 }
@@ -62,36 +62,34 @@ fn load_passphrase() -> Result<String, std::io::Error> {
     Ok(passphrase)
 }
 
+/// Strip newline, if present
+fn strip_newline(input: &mut String) {
+    if let Some('\n') = input.chars().last() {
+        input.pop();
+    } 
+}
+
+/// Load file contents
+fn load_from_file(filename: &str) -> Result<String, std::io::Error> {
+    Ok(std::fs::read_to_string(&filename)?)
+}
+
 /// Parse Vec<u8> to hexadecimal string
 fn to_hex_string(bytes: Vec<u8>) -> String {
     return bytes.iter().map(|b| format!("{:02x}", b)).collect();
 }
 
-
 /// Checks whether given mnemonic has valid format
-///
-/// # Arguments
-///
-/// * `mnemonic` - string which will be checked or path to file which content will be checked in case of from_file = true
 fn check_valid_mnemonic(mnemonic: &str) -> bool {
     return is_alphabetic_whitespace(&mnemonic);
 }
 
 /// Checks whether given entropy has valid format
-///
-/// # Arguments
-///
-/// * `entropy` - string which will be checked or path to file which content will be checked in case of from_file = true
 fn check_valid_entropy(entropy: &str) -> bool {
     return is_binary(&entropy) || is_hexadecimal(&entropy);
 }
 
 /// Checks whether given mnemonic and seed has valid format
-///
-/// # Arguments
-///
-/// * `mnemonic` - string which will be checked or path to file which content will be checked in case of from_file = true
-/// * `seed` - string which will be checked or path to file which content will be checked in case of from_file = true
 fn check_valid_check_params(mnemonic: &str, seed: &str) -> bool {
     return check_valid_mnemonic(mnemonic) && is_hexadecimal(seed);
 }
@@ -102,8 +100,14 @@ fn check_valid_check_params(mnemonic: &str, seed: &str) -> bool {
 ///
 /// * `to_file` - write result to file if Some
 /// * `mnemonic` - mnemonic which will be processed or path to file which content will be processed
-fn handle_mnemonic_result(to_file: &Option<String>, mnemonic: &str) -> Result<(), std::io::Error> {
-    let initial_entropy: Vec<u8> = mnemonic_to_entropy(&mnemonic);
+fn handle_mnemonic_result(to_file: &Option<String>, mnemonic: &str) -> Result<i32, std::io::Error> {
+    let initial_entropy = match mnemonic_to_entropy(&mnemonic) {
+        Err(error) => {
+            eprintln!("Input error: {}", error);
+            return Ok(1);
+        },
+        Ok(entropy) => entropy,
+    };
     let pass_phrase = load_passphrase()?;
 
     // Build final string
@@ -135,7 +139,7 @@ fn handle_mnemonic_result(to_file: &Option<String>, mnemonic: &str) -> Result<()
         print!("{}", write_all);
     }
 
-    Ok(())
+    Ok(0)
 }
 
 
@@ -145,16 +149,35 @@ fn handle_mnemonic_result(to_file: &Option<String>, mnemonic: &str) -> Result<()
 ///
 /// * `to_file` - write result to file if Some
 /// * `entropy` - entropy which will be processed or path to file which content will be processed
-fn handle_entropy_result(to_file: &Option<String>, entropy: &str) -> Result<(), std::io::Error> {
+fn handle_entropy_result(to_file: &Option<String>, entropy: &str) -> Result<i32, std::io::Error> {
     let entropy_value: Vec<u8>;
     let mut input_entropy = String::from(entropy);
 
     if is_binary(&input_entropy) { // if input in binary, convert it to hexadecimal
-        input_entropy = binary_to_hex(&input_entropy);
+        input_entropy = match binary_to_hex(&input_entropy) {
+            Err(error) => {
+                eprintln!("Input error: {}", error);
+                return Ok(1);
+            },
+            Ok(entropy) => entropy,
+        }
     }
 
-    entropy_value = decode_hex(&input_entropy).ok().unwrap();
-    let mnemonic_result = entropy_to_mnemonic(&entropy_value);
+    entropy_value = match decode_hex(&input_entropy) {
+        Err(_) => {
+            eprintln!("Input error: Cannot decode hex!");
+            return Ok(1);
+        },
+        Ok(entropy) => entropy,
+    };
+
+    let mnemonic_result = match entropy_to_mnemonic(&entropy_value) {
+        Err(error) => {
+            eprintln!("Input error: {}", error);
+            return Ok(1);
+        },
+        Ok(mnemonic) => mnemonic,
+    };
 
     let pass_phrase = load_passphrase()?;
     let seed = to_hex_string(mnemonic_to_seed(&mnemonic_result, Some(&pass_phrase)));
@@ -188,7 +211,7 @@ fn handle_entropy_result(to_file: &Option<String>, entropy: &str) -> Result<(), 
         print!("{}", write_all);
     }
 
-    Ok(())
+    Ok(0)
 }
 
 /// Handle result of check operation
@@ -198,10 +221,16 @@ fn handle_entropy_result(to_file: &Option<String>, entropy: &str) -> Result<(), 
 /// * `to_file` - write result to file if Some
 /// * `mnemonic` - mnemonic which will be processed ofr path to file which content will be processed
 /// * `seed` - seed which will be processed ofr path to file which content will be processed
-fn handle_check_result(to_file: &Option<String>, mnemonic: &str, seed: &str) -> Result<(), std::io::Error> {
+fn handle_check_result(to_file: &Option<String>, mnemonic: &str, seed: &str) -> Result<i32, std::io::Error> {
     let pass_phrase = load_passphrase()?;
     let computed_seed = mnemonic_to_seed(&mnemonic, Some(&pass_phrase));
-    let hex_init_seed = decode_hex(&seed).ok().unwrap();
+    let hex_init_seed = match decode_hex(&seed) {
+        Err(_) => {
+            eprintln!("Input error: Cannot decode hex!");
+            return Ok(1);
+        },
+        Ok(entropy) => entropy,
+    };
 
     // Build final string
     let mut result:String = String::new();
@@ -240,7 +269,7 @@ fn handle_check_result(to_file: &Option<String>, mnemonic: &str, seed: &str) -> 
         print!("{}", write_all);
     }
 
-    Ok(())
+    Ok(0)
 }
 
 struct Options {
@@ -270,7 +299,7 @@ impl Options {
         if self.entropy.is_some() as u8 + self.mnemonic.is_some() as u8 + self.check.is_some() as u8 > 1 {
             print_help();
             println!();
-            println!("Multiple operations specified, exiting...");
+            eprintln!("Multiple operations specified, exiting...");
             std::process::exit(1);
         }
     }
@@ -280,71 +309,57 @@ impl Options {
         if !(self.entropy.is_some() || self.mnemonic.is_some() || self.check.is_some()) {
             print_help();
             println!();
-            println!("Nothing to do, provide operation (--entropy, --mnemonic, --check), exiting...");
+            eprintln!("Nothing to do, provide operation (--entropy, --mnemonic, --check), exiting...");
             std::process::exit(1);
         }
     }
 
-    fn load_from_file(filename: &str) -> Result<String, std::io::Error> {
-        let mut file_contents = std::fs::read_to_string(&filename)?;
-        if let Some('\n') = file_contents.chars().last() {
-            file_contents.pop(); // remove trailing newline if there is one
-        }
-        Ok(file_contents)
-    }
-
-    fn load_from_file_all(&mut self) -> Result<(), std::io::Error> {
+    fn load(&mut self) -> Result<(), std::io::Error> {
         if self.from_file {
             if self.entropy.is_some() {
-                self.entropy = Some(Self::load_from_file(self.entropy.as_ref().unwrap())?)
+                self.entropy = Some(load_from_file(self.entropy.as_ref().unwrap())?)
             }
             if self.mnemonic.is_some() {
-                self.mnemonic = Some(Self::load_from_file(self.mnemonic.as_ref().unwrap())?)
+                self.mnemonic = Some(load_from_file(self.mnemonic.as_ref().unwrap())?)
             }
             if self.check.is_some() {
                 let (check_mnemonic, check_seed) = self.check.as_ref().unwrap();
-                self.check = Some((Self::load_from_file(check_mnemonic)?, Self::load_from_file(check_seed)?))
+                self.check = Some((load_from_file(check_mnemonic)?, load_from_file(check_seed)?))
             }
         }
         Ok(())
     }
 
-    fn strip_newline(input: &mut String) {
-        if let Some('\n') = input.chars().last() {
-            input.pop();
-        } 
-    }
-
     fn clean_input(&mut self) {
         if self.entropy.is_some() {
-            Self::strip_newline(self.entropy.as_mut().unwrap());
+            strip_newline(self.entropy.as_mut().unwrap());
         }
         if self.mnemonic.is_some() {
-            Self::strip_newline(self.mnemonic.as_mut().unwrap());
+            strip_newline(self.mnemonic.as_mut().unwrap());
         }
         if self.check.is_some() {
             let (check_mnemonic, check_seed) = self.check.as_mut().unwrap();
-            Self::strip_newline(check_mnemonic);
-            Self::strip_newline(check_seed);
+            strip_newline(check_mnemonic);
+            strip_newline(check_seed);
         }
     }
 
     fn check_data(&self) {
         if let Some(entropy) = self.entropy.as_ref() {
             if !check_valid_entropy(entropy) {
-                println!("Entropy parameter invalid format, only hexadecimal(even length) or binary format accepted");
+                eprintln!("Entropy parameter invalid format, only hexadecimal or binary format accepted");
                 std::process::exit(1);
             }
         }
         if let Some(mnemonic) = self.mnemonic.as_ref() {
             if !check_valid_mnemonic(mnemonic) {
-                println!("Mnemonic parameter invalid format, only alphabetic and whitespace characters accepted");
+                eprintln!("Mnemonic parameter invalid format, only alphabetic and whitespace characters accepted");
                 std::process::exit(1);
             }
         }
         if let Some((check_mnemonic, check_seed)) = self.check.as_ref() {
             if !check_valid_check_params(check_mnemonic, check_seed) {
-                println!("Check parameters invalid format, exiting...");
+                eprintln!("Check parameters invalid format, exiting...");
                 std::process::exit(1);
             }
         }
@@ -404,7 +419,7 @@ fn main() {
     options.check_at_least_one_operation();
     options.check_multiple_operations();
 
-    if let Err(_) = options.load_from_file_all() {
+    if let Err(_) = options.load() {
         eprintln!("Input file could not be read!");
         std::process::exit(1);
     }
@@ -428,4 +443,5 @@ fn main() {
         eprintln!("IO error: {}", result.unwrap_err().description());
         std::process::exit(1);
     }
+    std::process::exit(result.unwrap());
 }

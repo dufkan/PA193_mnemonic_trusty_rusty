@@ -6,10 +6,10 @@ mod util;
 pub const WORD_LIST: [&'static str; 2048] = include!("wordlist.in");
 
 /// Get position of word in wordlist
-fn mnemonic_lookup(mnemonic: &str) -> u16 {
+fn mnemonic_lookup(mnemonic: &str) -> Result<u16, String> {
     match WORD_LIST.iter().position(|x| x == &mnemonic) {
-        None    => panic!("Invalid word: {}", mnemonic),
-        Some(v) => v as u16
+        None    => Err(format!("Invalid word: {}", mnemonic)),
+        Some(v) => Ok(v as u16)
     }
 }
 
@@ -21,18 +21,21 @@ fn sha256(input: &[u8]) -> Vec<u8> {
 }
 
 /// Get checksum by entropy in bytes
-fn checksum(entropy: &[u8]) -> u8 {
+fn checksum(entropy: &[u8]) -> Result<u8, String> {
     let ent = entropy.len(); // number of bytes
-    assert_eq!(ent % 4, 0); // entropy must be a multiple of 4 bytes
+    if ent % 4 != 0 {
+        return Err(String::from("Entropy is not multiple of 4!"));
+    }
+
     let cs = ent / 4;
     let header = sha256(entropy)[0]; // first byte of hash
     match cs {
-        4 => header & 0b1111_0000,
-        5 => header & 0b1111_1000,
-        6 => header & 0b1111_1100,
-        7 => header & 0b1111_1110,
-        8 => header,
-        _ => panic!("Size of the block is not compatible!{}", cs),
+        4 => Ok(header & 0b1111_0000),
+        5 => Ok(header & 0b1111_1000),
+        6 => Ok(header & 0b1111_1100),
+        7 => Ok(header & 0b1111_1110),
+        8 => Ok(header),
+        _ => Err(format!("Size of the block is not compatible!{}", cs)),
     }
 }
 
@@ -55,11 +58,11 @@ fn get_word(position: usize, entropy: &Vec<u8>) -> &str {
 }
 
 /// Get words from entropy
-pub fn entropy_to_mnemonic(entropy: &[u8]) -> String {
+pub fn entropy_to_mnemonic(entropy: &[u8]) -> Result<String, String> {
     let mut entropy: Vec<_> = entropy.to_vec();
     let ms = entropy.len() * 3 / 4; // length of mnemonic sentence is 0.75 multiply of initial entropy
     let checksum = checksum(&entropy);
-    entropy.push(checksum); // append checksum to the end of entropy
+    entropy.push(checksum?); // append checksum to the end of entropy
     let mut result = String::new();
     for index in 0..ms {
         result.push_str(get_word(index, &entropy));
@@ -67,16 +70,16 @@ pub fn entropy_to_mnemonic(entropy: &[u8]) -> String {
             result.push(' ');
         }
     }
-    result
+    Ok(result)
 }
 
 /// Get entropy from mnemonic
-pub fn mnemonic_to_entropy(sentence: &str) -> Vec<u8> {
+pub fn mnemonic_to_entropy(sentence: &str) -> Result<Vec<u8>, String> {
     let words: Vec<_> = sentence.split(" ").collect();
     let mut result = [0u8; 33];
     let mut pos = 0usize; // position of actual bit in entropy
     for word in words {
-        let index = mnemonic_lookup(word);
+        let index = mnemonic_lookup(word)?;
         for offset in 0..11 {
             let bit_value = (index & (1024 >> offset as u16)) != 0u16;
             if bit_value {
@@ -87,11 +90,13 @@ pub fn mnemonic_to_entropy(sentence: &str) -> Vec<u8> {
     }
     let checksum_len = pos / 33;
     let entropy = (&result[0..(pos - checksum_len)/8]).to_vec();
-    let checksum = checksum(&entropy);
+    let checksum = checksum(&entropy)?;
 
     // check if checksum is equal to last byte
-    assert_eq!(checksum, result[(pos - checksum_len)/8]);
-    entropy
+    if checksum != result[(pos - checksum_len) / 8] {
+        return Err(String::from("Invalid mnemonic checksum!"));
+    }
+    Ok(entropy)
 }
 
 /// Transform a mnemonic to a seed
@@ -278,8 +283,8 @@ mod tests {
             let test_entropy = decode_hex(test_vectors[3*i + 0]).unwrap();
             let test_mnemonic = test_vectors[3*i + 1].to_string();
             let test_seed = decode_hex(test_vectors[3*i + 2]).unwrap();
-            assert_eq!(test_entropy, mnemonic_to_entropy(&test_mnemonic));
-            assert_eq!(test_mnemonic, entropy_to_mnemonic(&test_entropy));
+            assert_eq!(test_entropy, mnemonic_to_entropy(&test_mnemonic).unwrap());
+            assert_eq!(test_mnemonic, entropy_to_mnemonic(&test_entropy).unwrap());
             assert_eq!(test_seed, mnemonic_to_seed(&test_mnemonic, Some("TREZOR")));
         }
     }

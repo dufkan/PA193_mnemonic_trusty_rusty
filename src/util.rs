@@ -15,9 +15,6 @@ pub fn is_hexadecimal(text: &str) -> bool {
 
 // https://stackoverflow.com/questions/52987181/how-can-i-convert-a-hex-string-to-a-u8-slice
 pub fn decode_hex(input: &str) -> Result<Vec<u8>, ParseIntError> {
-    if !is_hexadecimal(input) {
-        panic!("Invalid input");
-    }
     (0..input.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&input[i..i + 2], 16))
@@ -46,9 +43,9 @@ pub fn is_alphabetic_whitespace(text: &str) -> bool{
 }
 
 /// Convert binary string to hex
-pub fn binary_to_hex(val: &str) -> String {
+pub fn binary_to_hex(val: &str) -> Result<String, String> {
     if val.len() % 8 != 0 {
-        panic!("Invalid binary input - length not divisible by 8");
+        return Err(String::from("Invalid binary input - length not divisible by 8"));
     }
 
     let mut result = String::new();
@@ -59,7 +56,7 @@ pub fn binary_to_hex(val: &str) -> String {
         result.push_str(&format!("{:0x}", partial_hex));
         binary_text = &binary_text[4..];
     }
-    result
+    Ok(result)
 }
 
 
@@ -119,16 +116,16 @@ mod tests {
 
     # [test]
     fn test_binary_to_hex_1() {
-        assert_eq!(binary_to_hex("11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"), "ffffffffffffffffffffffffffffffff")
+        assert_eq!(binary_to_hex("11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111").unwrap(), "ffffffffffffffffffffffffffffffff")
     }
 
     # [test]
     fn test_binary_to_hex_2() {
-        assert_eq!(binary_to_hex("0000011001101101110010100001101000101011101101111110100010100001110110110010100000110010000101001000110011101001100100110011111011101010000011110011101011001001010101001000110101111001001100010001001011011001101010010101110010010100000001111110111110101101"), "066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad")
+        assert_eq!(binary_to_hex("0000011001101101110010100001101000101011101101111110100010100001110110110010100000110010000101001000110011101001100100110011111011101010000011110011101011001001010101001000110101111001001100010001001011011001101010010101110010010100000001111110111110101101").unwrap(), "066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad")
     }
 
     # [test]
     fn test_binary_to_hex_3() {
-        assert_eq!(binary_to_hex("11000000101110100101101010001110100100010100000100010001001000010000111100101011110100010011000111110011110101011110000010001101"), "c0ba5a8e914111210f2bd131f3d5e08d");
+        assert_eq!(binary_to_hex("11000000101110100101101010001110100100010100000100010001001000010000111100101011110100010011000111110011110101011110000010001101").unwrap(), "c0ba5a8e914111210f2bd131f3d5e08d");
     }
 }
