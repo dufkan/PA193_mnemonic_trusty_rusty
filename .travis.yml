@@ -1,3 +1,9 @@
 language: rust
 rust:
   - stable
+cache: cargo # cache cargo-audit once installed
+before_script:
+  - cargo install --force cargo-audit
+  - cargo generate-lockfile
+script:
+  - cargo audit
