@@ -10,7 +10,7 @@ use util::{is_hexadecimal, decode_hex, is_binary, is_alphabetic_whitespace, bina
 /// Prints help
 fn print_help() {
 	println!("USAGE:");
-	println!("    {} [ARGS]", std::env::args().next().unwrap_or(String::from("cargo run --")));
+	println!("    {} [ARGS]", std::env::args().next().unwrap_or_else(|| String::from("cargo run --")));
 	println!("ARGS:");
 	println!("  --help                                         Print help");
 	println!("  --entropy <entropy/filepath>                   Generate mnemonic and seed from given entropy");
@@ -78,22 +78,22 @@ fn load_from_file(filename: &str) -> Result<String, std::io::Error> {
 
 /// Parse Vec<u8> to hexadecimal string
 fn to_hex_string(bytes: Vec<u8>) -> String {
-    return bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
 /// Checks whether given mnemonic has valid format
 fn check_valid_mnemonic(mnemonic: &str) -> bool {
-    return is_alphabetic_whitespace(&mnemonic);
+    is_alphabetic_whitespace(&mnemonic)
 }
 
 /// Checks whether given entropy has valid format
 fn check_valid_entropy(entropy: &str) -> bool {
-    return is_binary(&entropy) || is_hexadecimal(&entropy);
+    is_binary(&entropy) || is_hexadecimal(&entropy)
 }
 
 /// Checks whether given mnemonic and seed has valid format
 fn check_valid_check_params(mnemonic: &str, seed: &str) -> bool {
-    return check_valid_mnemonic(mnemonic) && is_hexadecimal(seed);
+    check_valid_mnemonic(mnemonic) && is_hexadecimal(seed)
 }
 
 /// Handle result of mnemonic operation
@@ -427,7 +427,7 @@ fn run() -> Result<(), i32> {
     options.check_at_least_one_operation()?;
     options.check_multiple_operations()?;
 
-    if let Err(_) = options.load() {
+    if options.load().is_err() {
         eprintln!("Input file could not be read!");
         return Err(1);
     }
@@ -447,8 +447,8 @@ fn run() -> Result<(), i32> {
         unreachable!()
     };
 
-    if result.is_err() {
-        eprintln!("IO error: {}", result.unwrap_err().description());
+    if let Err(err) = result {
+        eprintln!("IO error: {}", err.description());
         return Err(1);
     }
 

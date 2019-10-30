@@ -3,7 +3,7 @@ use sha2::{Sha256, Sha512, Digest};
 #[cfg(test)]
 mod util;
 
-pub const WORD_LIST: [&'static str; 2048] = include!("wordlist.in");
+pub const WORD_LIST: [&str; 2048] = include!("wordlist.in");
 
 /// Get position of word in wordlist
 fn mnemonic_lookup(mnemonic: &str) -> Result<u16, String> {
@@ -40,7 +40,7 @@ fn checksum(entropy: &[u8]) -> Result<u8, String> {
 }
 
 // Get n-th word of entropy ...
-fn get_word(position: usize, entropy: &Vec<u8>) -> &str {
+fn get_word(position: usize, entropy: &[u8]) -> &str {
     let mut index: u16 = 0b0000_0000_0000_0000; // n-th mnemonic word of sentence
     let first_bit: usize = position * 11; // first bit of mnemonic word
 
@@ -75,7 +75,7 @@ pub fn entropy_to_mnemonic(entropy: &[u8]) -> Result<String, String> {
 
 /// Get entropy from mnemonic
 pub fn mnemonic_to_entropy(sentence: &str) -> Result<Vec<u8>, String> {
-    let words: Vec<_> = sentence.split(" ").collect();
+    let words: Vec<_> = sentence.split(' ').collect();
     let mut result = [0u8; 33];
     let mut pos = 0usize; // position of actual bit in entropy
     for word in words {
@@ -83,7 +83,7 @@ pub fn mnemonic_to_entropy(sentence: &str) -> Result<Vec<u8>, String> {
         for offset in 0..11 {
             let bit_value = (index & (1024 >> offset as u16)) != 0u16;
             if bit_value {
-                result[pos / 8] |= (128u8 >> pos % 8) as u8;
+                result[pos / 8] |= 128u8 >> (pos % 8) as u8;
             }
             pos += 1;
         }
