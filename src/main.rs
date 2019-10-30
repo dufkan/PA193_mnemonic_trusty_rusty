@@ -1,6 +1,6 @@
 mod util;
 
-use mnemonic::{entropy_to_mnemonic, mnemonic_to_entropy, mnemonic_to_seed};
+use mnemonic::{entropy_to_mnemonic, mnemonic_to_entropy, mnemonic_to_seed, mnemonic_lookup};
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -68,7 +68,7 @@ fn load_passphrase() -> Result<String, std::io::Error> {
 fn strip_newline(input: &mut String) {
     if let Some('\n') = input.chars().last() {
         input.pop();
-    } 
+    }
 }
 
 /// Load file contents
@@ -103,6 +103,14 @@ fn check_valid_check_params(mnemonic: &str, seed: &str) -> bool {
 /// * `to_file` - write result to file if Some
 /// * `mnemonic` - mnemonic which will be processed or path to file which content will be processed
 fn handle_mnemonic_result(to_file: &Option<String>, mnemonic: &str) -> Result<i32, std::io::Error> {
+    let words: Vec<_> = mnemonic.split(' ').collect();
+    let possible_len: [usize; 5] = [12, 15, 18, 21, 24];
+    if ! possible_len.contains(&words.len()) {
+        eprintln!("Mnemonic sentence could contains just 12, 15, 18, 21 or 24 words");
+        return Ok(1);
+    }
+    for word in words { mnemonic_lookup(word); }
+
     let initial_entropy = match mnemonic_to_entropy(&mnemonic) {
         Err(error) => {
             eprintln!("Input error: {}", error);
@@ -265,7 +273,7 @@ fn handle_check_result(to_file: &Option<String>, mnemonic: &str, seed: &str) -> 
 
         // write to file
         file.write_all(write_all.as_bytes())?;
-        
+
         println!("successfully wrote to {}", display);
     } else {
         print!("{}", write_all);

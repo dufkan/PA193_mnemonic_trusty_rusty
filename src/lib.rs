@@ -6,7 +6,7 @@ mod util;
 pub const WORD_LIST: [&str; 2048] = include!("wordlist.in");
 
 /// Get position of word in wordlist
-fn mnemonic_lookup(mnemonic: &str) -> Result<u16, String> {
+pub fn mnemonic_lookup(mnemonic: &str) -> Result<u16, String> {
     match WORD_LIST.iter().position(|x| x == &mnemonic) {
         None    => Err(format!("Invalid word: {}", mnemonic)),
         Some(v) => Ok(v as u16)
@@ -100,9 +100,9 @@ pub fn mnemonic_to_entropy(sentence: &str) -> Result<Vec<u8>, String> {
 }
 
 /// Transform a mnemonic to a seed
-/// 
+///
 /// # Arguments
-/// 
+///
 ///  * `mnemonic` - the mnemonic
 ///  * `passphrase` - an optional passphrase
 pub fn mnemonic_to_seed(mnemonic: &str, passphrase: Option<&str>) -> Vec<u8> {
