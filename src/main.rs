@@ -109,7 +109,6 @@ fn handle_mnemonic_result(to_file: &Option<String>, mnemonic: &str) -> Result<i3
         eprintln!("Mnemonic sentence could contains just 12, 15, 18, 21 or 24 words");
         return Ok(1);
     }
-    for word in words { mnemonic_lookup(word); }
 
     let initial_entropy = match mnemonic_to_entropy(&mnemonic) {
         Err(error) => {
