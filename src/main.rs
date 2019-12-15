@@ -1,3 +1,4 @@
+#![feature(try_reserve)]
 mod util;
 
 use mnemonic::{entropy_to_mnemonic, mnemonic_to_entropy, mnemonic_to_seed};
@@ -195,6 +196,7 @@ fn handle_entropy_result(to_file: &Option<String>, entropy: &str, binary: bool) 
     let mut write_entropy = String::from("Entered entropy: ");
     write_entropy.push_str(&input_entropy);
     let mut write_mnemonic = String::from("Output mnemonic: ");
+    write_mnemonic.try_reserve(mnemonic_result.len());
     write_mnemonic.push_str(&mnemonic_result);
     let mut write_seed = String::from("Output seed: ");
     write_seed.push_str(&seed);
